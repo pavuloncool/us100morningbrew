@@ -54,6 +54,10 @@ Jesli Supabase nadal wysyla link do `http://localhost:3000`, oznacza to, ze
 URL Configuration w Supabase nadal wskazuje na lokalny adres albo redirect URL
 nie jest na allowliscie.
 
+Dodatkowo aplikacja ma globalny handler fragmentu auth. Jesli Supabase zwroci
+uzytkownika na dowolna strone, np. `/pl#access_token=...`, web app przechwyci
+token, ustawi sesje review i przekieruje do `/review`.
+
 Typowe problemy logowania:
 
 - brak `SUPABASE_ANON_KEY` w Vercel,

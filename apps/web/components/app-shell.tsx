@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 
 import { isAppLocale, uiCopy, type AppLocale } from "@/lib/briefings";
+import { ReviewAuthFragmentHandler } from "@/components/review-auth-fragment-handler";
 import { SiteHeader } from "@/components/site-header";
 
 type AppShellProps = {
@@ -27,6 +28,7 @@ export function AppShell({ children }: AppShellProps) {
 
   return (
     <>
+      <ReviewAuthFragmentHandler />
       <a className="skip-link" href="#main">
         {copy.skipToContent}
       </a>
