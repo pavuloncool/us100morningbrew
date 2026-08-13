@@ -34,7 +34,7 @@ export default async function ReviewLoginPage({ searchParams }: ReviewLoginPageP
       <section className="review-panel review-form-panel">
         <p className="eyebrow">Review login</p>
         <h1>Zaloguj do panelu akceptacji</h1>
-        <p>Wpisz swój e-mail. Wyślemy krótki kod logowania.</p>
+        <p>Wpisz swój e-mail. Wyślemy link logowania albo krótki kod.</p>
         {message ? <p className="form-error">{message}</p> : null}
         <form action="/api/review/login" className="review-form" method="post">
           <label>
@@ -42,7 +42,7 @@ export default async function ReviewLoginPage({ searchParams }: ReviewLoginPageP
             <input autoComplete="email" defaultValue={email} name="email" required type="email" />
           </label>
           <button className="button-primary" type="submit">
-            Wyślij kod
+            Wyślij link logowania
           </button>
         </form>
       </section>

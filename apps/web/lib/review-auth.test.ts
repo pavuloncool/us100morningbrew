@@ -4,6 +4,7 @@ import {
   createReviewSession,
   hasReviewAccess,
   isReviewEmailAllowed,
+  reviewAuthCallbackUrl,
   verifyReviewSession
 } from "./review-auth";
 
@@ -38,5 +39,13 @@ describe("review auth", () => {
     const tampered = `${replacement}${payload.slice(1)}.${signature}`;
 
     expect(verifyReviewSession(tampered, env)).toBeNull();
+  });
+
+  it("uses the production app URL for auth callbacks", () => {
+    expect(
+      reviewAuthCallbackUrl({
+        NEXT_PUBLIC_APP_URL: "https://www.theguy2b.com/"
+      })
+    ).toBe("https://www.theguy2b.com/review/auth-callback");
   });
 });

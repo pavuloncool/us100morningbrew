@@ -17,6 +17,10 @@ type SupabaseVerifyResponse = {
   };
 };
 
+type SupabaseUserResponse = {
+  email?: string;
+};
+
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
@@ -160,6 +164,18 @@ function supabaseAuthConfig(env: ReviewEnv): { anonKey: string; url: string } {
   };
 }
 
+function appBaseUrl(env: ReviewEnv = process.env): string {
+  const url =
+    env.NEXT_PUBLIC_APP_URL ??
+    (env.VERCEL_URL ? `https://${env.VERCEL_URL}` : undefined) ??
+    "http://localhost:3000";
+  return url.endsWith("/") ? url.slice(0, -1) : url;
+}
+
+export function reviewAuthCallbackUrl(env: ReviewEnv = process.env): string {
+  return `${appBaseUrl(env)}/review/auth-callback`;
+}
+
 async function parseSupabaseAuthResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const body = await response.text();
@@ -182,7 +198,8 @@ export async function sendReviewLoginCode(
   const response = await fetch(`${url}/auth/v1/otp`, {
     body: JSON.stringify({
       create_user: true,
-      email: normalizedEmail
+      email: normalizedEmail,
+      redirect_to: reviewAuthCallbackUrl(env)
     }),
     headers: {
       apikey: anonKey,
@@ -193,6 +210,30 @@ export async function sendReviewLoginCode(
   });
 
   await parseSupabaseAuthResponse<Record<string, never>>(response);
+}
+
+export async function createReviewSessionFromSupabaseAccessToken(
+  accessToken: string,
+  env: ReviewEnv = process.env
+): Promise<{ email: string; session: string }> {
+  const { anonKey, url } = supabaseAuthConfig(env);
+  const response = await fetch(`${url}/auth/v1/user`, {
+    headers: {
+      apikey: anonKey,
+      Authorization: `Bearer ${accessToken}`
+    }
+  });
+  const data = await parseSupabaseAuthResponse<SupabaseUserResponse>(response);
+  const email = normalizeEmail(data.email ?? "");
+
+  if (!email || !isReviewEmailAllowed(email, env)) {
+    throw new Error("This email is not allowed to access review.");
+  }
+
+  return {
+    email,
+    session: createReviewSession(email, env)
+  };
 }
 
 export async function verifyReviewLoginCode(

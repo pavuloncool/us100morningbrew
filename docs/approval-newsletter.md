@@ -5,8 +5,10 @@ Etap 5 dodaje human-in-the-loop przed publikacja i newsletterem.
 ## Przeplyw
 
 1. Cron generuje Morning Brew jako `draft`.
-2. Prywatny ekran `/review/login` wysyla kod logowania na dozwolony adres e-mail.
-3. Po wpisaniu kodu aplikacja zapisuje sesje redakcyjna w cookie.
+2. Prywatny ekran `/review/login` wysyla link logowania albo kod na dozwolony
+   adres e-mail.
+3. Po kliknieciu linku albo wpisaniu kodu aplikacja zapisuje sesje redakcyjna
+   w cookie.
 4. Prywatny ekran `/review` pokazuje drafty do akceptacji.
 5. Po kliknieciu "Zaakceptuj i opublikuj" system zmienia briefing na
    `published`.
@@ -34,6 +36,23 @@ KIT_SUBSCRIBER_FILTER=<optional-json-filter>
 
 `US100_REVIEW_EMAILS` ogranicza, kto moze dostac kod logowania do panelu
 redakcyjnego.
+
+## Supabase Auth URL configuration
+
+W Supabase trzeba ustawic:
+
+- Site URL: `https://www.theguy2b.com`
+- Redirect URLs: `https://www.theguy2b.com/**`
+
+Aplikacja przekazuje do Supabase redirect:
+
+```txt
+https://www.theguy2b.com/review/auth-callback
+```
+
+Jesli Supabase nadal wysyla link do `http://localhost:3000`, oznacza to, ze
+URL Configuration w Supabase nadal wskazuje na lokalny adres albo redirect URL
+nie jest na allowliscie.
 
 Typowe problemy logowania:
 
