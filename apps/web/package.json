@@ -1,0 +1,26 @@
+{
+  "name": "@us100/web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@us100/contracts": "workspace:*",
+    "@us100/design-system": "workspace:*",
+    "@us100/research": "workspace:*",
+    "@us100/storage": "workspace:*",
+    "next": "16.2.11",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "typescript": "5.9.3",
+    "vitest": "4.1.10"
+  }
+}

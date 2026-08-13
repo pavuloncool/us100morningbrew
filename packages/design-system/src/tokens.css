@@ -1,0 +1,49 @@
+:root {
+  --background: #f4f1ea;
+  --surface: #fffdf8;
+  --foreground: #1f2528;
+  --muted: #6c7275;
+  --border: rgb(31 37 40 / 18%);
+  --border-strong: rgb(31 37 40 / 44%);
+  --positive: #3f7d58;
+  --positive-soft: rgb(63 125 88 / 14%);
+  --negative: #a6423a;
+  --negative-soft: rgb(166 66 58 / 14%);
+  --warning: #b27c2a;
+  --warning-soft: rgb(178 124 42 / 16%);
+  --info: #356e8d;
+  --info-soft: rgb(53 110 141 / 14%);
+  --surface-shadow: rgb(31 37 40 / 8%);
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  --font-sans:
+    "Geist", "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  --text-page-title-size: 40px;
+  --text-page-title-line-height: 1.08;
+  --text-section-title-size: 22px;
+  --text-section-title-line-height: 1.2;
+  --text-body-size: 15px;
+  --text-body-line-height: 1.58;
+  --text-small-size: 13px;
+  --text-small-line-height: 1.45;
+  --text-label-size: 12px;
+  --text-label-line-height: 1.3;
+}
+
