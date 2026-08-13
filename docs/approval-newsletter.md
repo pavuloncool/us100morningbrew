@@ -35,6 +35,13 @@ KIT_SUBSCRIBER_FILTER=<optional-json-filter>
 `US100_REVIEW_EMAILS` ogranicza, kto moze dostac kod logowania do panelu
 redakcyjnego.
 
+Typowe problemy logowania:
+
+- brak `SUPABASE_ANON_KEY` w Vercel,
+- wpisany e-mail nie znajduje sie w `US100_REVIEW_EMAILS`,
+- Supabase Auth / Email nie ma wlaczonej wysylki OTP,
+- ponowna wysylka kodu za szybko po poprzedniej probie.
+
 Jesli `US100_NEWSLETTER_PROVIDER` nie jest ustawione na `kit`, approval nadal
 publikuje briefing na stronie, ale pomija tworzenie newslettera.
 
