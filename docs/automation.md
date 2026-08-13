@@ -55,10 +55,42 @@ OPENAI_API_KEY=<openai-api-key>
 OPENAI_MODEL=gpt-5
 US100_GENERATION_TARGET_STATUS=draft
 US100_CRON_LOCALES=pl,en
+US100_REVIEW_SECRET=<private-review-token>
 ```
 
-Rekomendacja na start: `US100_GENERATION_TARGET_STATUS=draft`. Po kilku udanych
-przebiegach mozna zmienic na `published`.
+Rekomendacja produkcyjna: `US100_GENERATION_TARGET_STATUS=draft`.
+Briefing staje sie publiczny dopiero po akceptacji w `/review`.
+
+## Approval
+
+Prywatny ekran:
+
+```txt
+GET /review?token=$US100_REVIEW_SECRET
+```
+
+Po akceptacji:
+
+- status briefingu zmienia sie z `draft` na `published`,
+- publiczna strona zaczyna renderowac briefing,
+- system probuje utworzyc draft newslettera w Kit, jesli Kit jest
+  skonfigurowany.
+
+## Newsletter / Kit
+
+Opcjonalne env:
+
+```bash
+US100_NEWSLETTER_PROVIDER=kit
+KIT_API_KEY=<kit-api-key>
+KIT_EMAIL_TEMPLATE_ID=<optional-template-id>
+KIT_BROADCAST_PUBLIC=false
+KIT_SUBSCRIBER_FILTER=<optional-json-filter>
+NEXT_PUBLIC_APP_URL=https://<production-domain>
+```
+
+Newsletter nie jest wysylany automatycznie. Approval tworzy draft broadcastu w
+Kit.
 
 ## Manualne wywolanie
 

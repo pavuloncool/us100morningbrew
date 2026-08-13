@@ -15,21 +15,86 @@ import {
   createNoopResearchRunRepository,
   createResearchRunRepositoryFromEnv,
   type BriefingRepository,
-  type ResearchRunRepository
+  type BriefingStatus,
+  type ResearchRunRepository,
+  type SaveRenderArtifactInput,
+  type StoredBriefingRecord,
+  type StoredRenderArtifact
 } from "@us100/storage";
 
 const fixtureRepository: BriefingRepository = {
+  async getBriefingRecordBySlug(slug, locale, options) {
+    const briefing = getFixtureBriefingBySlug(slug, locale);
+    if (!briefing) {
+      return null;
+    }
+    if (options?.status && options.status !== "any" && briefing.status !== options.status) {
+      return null;
+    }
+    return {
+      briefing,
+      id: `${briefing.slug}:${briefing.language}`,
+      language: briefing.language,
+      publishedAt: briefing.publishedAt,
+      slug: briefing.slug,
+      status: briefing.status
+    };
+  },
   async getBriefingBySlug(slug, locale) {
     return getFixtureBriefingBySlug(slug, locale);
   },
   async getLatestBriefing(locale) {
     return getLatestFixtureBriefing(locale);
   },
+  async listBriefingRecords(locale, options) {
+    return listFixtureBriefings(locale)
+      .filter((briefing) => {
+        if (!options?.status || options.status === "published") {
+          return briefing.status === "published";
+        }
+        if (options.status === "any") {
+          return true;
+        }
+        return briefing.status === options.status;
+      })
+      .slice(0, options?.limit ?? 50)
+      .map((briefing) => ({
+        briefing,
+        id: `${briefing.slug}:${briefing.language}`,
+        language: briefing.language,
+        publishedAt: briefing.publishedAt,
+        slug: briefing.slug,
+        status: briefing.status
+      }));
+  },
   async listBriefings(locale, options) {
     return listFixtureBriefings(locale).slice(0, options?.limit ?? 50);
   },
+  async publishBriefing(slug, locale) {
+    const briefing = getFixtureBriefingBySlug(slug, locale);
+    if (!briefing) {
+      throw new Error(`Briefing ${slug}/${locale} was not found.`);
+    }
+    return {
+      ...briefing,
+      publishedAt: briefing.publishedAt ?? new Date().toISOString(),
+      status: "published"
+    };
+  },
   async saveBriefing(briefing) {
     return briefing;
+  },
+  async saveRenderArtifact(input) {
+    return {
+      artifactPath: input.artifactPath ?? null,
+      artifactUrl: input.artifactUrl ?? null,
+      briefingId: input.briefingId,
+      createdAt: new Date().toISOString(),
+      format: input.format,
+      id: `${input.briefingId}:${input.format}:${input.language}`,
+      language: input.language,
+      metadata: input.metadata ?? {}
+    };
   }
 };
 
@@ -50,6 +115,13 @@ export async function listBriefings(locale: Locale): Promise<MorningBrew[]> {
   return briefingRepository.listBriefings(locale);
 }
 
+export async function listBriefingRecords(
+  locale: Locale,
+  status: BriefingStatus | "any" = "published"
+): Promise<StoredBriefingRecord[]> {
+  return briefingRepository.listBriefingRecords(locale, { status });
+}
+
 export async function getLatestBriefing(locale: Locale): Promise<MorningBrew | null> {
   return briefingRepository.getLatestBriefing(locale);
 }
@@ -61,8 +133,26 @@ export async function getBriefingBySlug(
   return briefingRepository.getBriefingBySlug(slug, locale);
 }
 
+export async function getBriefingRecordBySlug(
+  slug: string,
+  locale: Locale,
+  status: BriefingStatus | "any" = "published"
+): Promise<StoredBriefingRecord | null> {
+  return briefingRepository.getBriefingRecordBySlug(slug, locale, { status });
+}
+
+export async function publishBriefing(slug: string, locale: Locale): Promise<MorningBrew> {
+  return briefingRepository.publishBriefing(slug, locale);
+}
+
 export async function saveBriefing(briefing: MorningBrew): Promise<MorningBrew> {
   return briefingRepository.saveBriefing(briefing);
+}
+
+export async function saveRenderArtifact(
+  input: SaveRenderArtifactInput
+): Promise<StoredRenderArtifact> {
+  return briefingRepository.saveRenderArtifact(input);
 }
 
 export const appLocales = ["pl", "en"] as const satisfies readonly Locale[];

@@ -101,6 +101,16 @@ const sampleBriefing = MorningBrewSchema.parse({
 });
 
 const fallbackRepository: BriefingRepository = {
+  async getBriefingRecordBySlug() {
+    return {
+      briefing: sampleBriefing,
+      id: "briefing-1",
+      language: sampleBriefing.language,
+      publishedAt: sampleBriefing.publishedAt,
+      slug: sampleBriefing.slug,
+      status: sampleBriefing.status
+    };
+  },
   async getBriefingBySlug() {
     return sampleBriefing;
   },
@@ -110,8 +120,35 @@ const fallbackRepository: BriefingRepository = {
   async listBriefings() {
     return [sampleBriefing];
   },
+  async listBriefingRecords() {
+    return [
+      {
+        briefing: sampleBriefing,
+        id: "briefing-1",
+        language: sampleBriefing.language,
+        publishedAt: sampleBriefing.publishedAt,
+        slug: sampleBriefing.slug,
+        status: sampleBriefing.status
+      }
+    ];
+  },
+  async publishBriefing() {
+    return sampleBriefing;
+  },
   async saveBriefing() {
     return sampleBriefing;
+  },
+  async saveRenderArtifact() {
+    return {
+      artifactPath: null,
+      artifactUrl: null,
+      briefingId: "briefing-1",
+      createdAt: "2026-08-13T06:00:00.000Z",
+      format: "newsletter",
+      id: "artifact-1",
+      language: "pl",
+      metadata: {}
+    };
   }
 };
 
@@ -134,16 +171,89 @@ describe("storage repository", () => {
       url: "https://example.supabase.co",
       fetch: async (input) => {
         requests.push(String(input));
-        return new Response(JSON.stringify([{ payload: sampleBriefing }]), {
-          headers: { "Content-Type": "application/json" },
-          status: 200
-        });
+        return new Response(
+          JSON.stringify([
+            {
+              id: "briefing-1",
+              language: "pl",
+              payload: sampleBriefing,
+              published_at: sampleBriefing.publishedAt,
+              slug: sampleBriefing.slug,
+              status: sampleBriefing.status
+            }
+          ]),
+          {
+            headers: { "Content-Type": "application/json" },
+            status: 200
+          }
+        );
       }
     });
 
     await expect(repository.getLatestBriefing("pl")).resolves.toEqual(sampleBriefing);
     expect(requests[0]).toContain("language=eq.pl");
     expect(requests[0]).toContain("status=eq.published");
+  });
+
+  it("publishes an existing Supabase briefing draft", async () => {
+    const draftBriefing = {
+      ...sampleBriefing,
+      publishedAt: null,
+      status: "draft" as const
+    };
+    const requests: Array<{ body?: unknown; method: string; url: string }> = [];
+    const repository = createSupabaseRestBriefingRepository({
+      apiKey: "test-key",
+      url: "https://example.supabase.co",
+      fetch: async (input, init) => {
+        requests.push({
+          body: init?.body ? JSON.parse(String(init.body)) : undefined,
+          method: init?.method ?? "GET",
+          url: String(input)
+        });
+
+        if (init?.method === "PATCH") {
+          return new Response(
+            JSON.stringify([
+              {
+                payload: (requests.at(-1)?.body as { payload: unknown }).payload
+              }
+            ]),
+            {
+              headers: { "Content-Type": "application/json" },
+              status: 200
+            }
+          );
+        }
+
+        return new Response(
+          JSON.stringify([
+            {
+              id: "briefing-1",
+              language: "pl",
+              payload: draftBriefing,
+              published_at: null,
+              slug: draftBriefing.slug,
+              status: "draft"
+            }
+          ]),
+          {
+            headers: { "Content-Type": "application/json" },
+            status: 200
+          }
+        );
+      }
+    });
+
+    const published = await repository.publishBriefing(
+      "2026-08-13-us100-morning-brew",
+      "pl",
+      "2026-08-13T07:00:00.000Z"
+    );
+
+    expect(published.status).toBe("published");
+    expect(published.publishedAt).toBe("2026-08-13T07:00:00.000Z");
+    expect(requests.some((request) => request.method === "PATCH")).toBe(true);
   });
 
   it("claims research runs idempotently", async () => {

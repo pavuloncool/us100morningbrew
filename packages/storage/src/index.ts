@@ -1,10 +1,59 @@
 import { LocaleSchema, MorningBrewSchema, type Locale, type MorningBrew } from "@us100/contracts";
 
+export type BriefingStatus = MorningBrew["status"];
+export type BriefingListOptions = {
+  limit?: number;
+  status?: BriefingStatus | "any";
+};
+
+export type StoredBriefingRecord = {
+  briefing: MorningBrew;
+  id: string;
+  language: Locale;
+  publishedAt: string | null;
+  slug: string;
+  status: BriefingStatus;
+};
+
+export type RenderArtifactFormat = "web" | "newsletter" | "instagram_carousel";
+
+export type StoredRenderArtifact = {
+  artifactPath: string | null;
+  artifactUrl: string | null;
+  briefingId: string;
+  createdAt: string;
+  format: RenderArtifactFormat;
+  id: string;
+  language: Locale;
+  metadata: Record<string, unknown>;
+};
+
+export type SaveRenderArtifactInput = {
+  artifactPath?: string | null;
+  artifactUrl?: string | null;
+  briefingId: string;
+  format: RenderArtifactFormat;
+  language: Locale;
+  metadata?: Record<string, unknown>;
+};
+
 export type BriefingRepository = {
-  listBriefings(locale: Locale, options?: { limit?: number }): Promise<MorningBrew[]>;
+  listBriefingRecords(locale: Locale, options?: BriefingListOptions): Promise<StoredBriefingRecord[]>;
+  listBriefings(locale: Locale, options?: BriefingListOptions): Promise<MorningBrew[]>;
   getLatestBriefing(locale: Locale): Promise<MorningBrew | null>;
-  getBriefingBySlug(slug: string, locale: Locale): Promise<MorningBrew | null>;
+  getBriefingRecordBySlug(
+    slug: string,
+    locale: Locale,
+    options?: { status?: BriefingStatus | "any" }
+  ): Promise<StoredBriefingRecord | null>;
+  getBriefingBySlug(
+    slug: string,
+    locale: Locale,
+    options?: { status?: BriefingStatus | "any" }
+  ): Promise<MorningBrew | null>;
+  publishBriefing(slug: string, locale: Locale, publishedAt?: string): Promise<MorningBrew>;
   saveBriefing(briefing: MorningBrew): Promise<MorningBrew>;
+  saveRenderArtifact(input: SaveRenderArtifactInput): Promise<StoredRenderArtifact>;
 };
 
 type FetchLike = (input: string | URL, init?: RequestInit) => Promise<Response>;
@@ -16,7 +65,12 @@ type SupabaseRestConfig = {
 };
 
 type SupabaseBriefingRow = {
+  id: string;
+  language: Locale;
   payload: unknown;
+  published_at: string | null;
+  slug: string;
+  status: BriefingStatus;
 };
 
 export type ResearchRunStatus = "queued" | "running" | "failed" | "drafted" | "published";
@@ -80,6 +134,17 @@ type SupabaseResearchRunRow = {
   status: ResearchRunStatus;
 };
 
+type SupabaseRenderArtifactRow = {
+  artifact_path: string | null;
+  artifact_url: string | null;
+  briefing_id: string;
+  created_at: string;
+  format: RenderArtifactFormat;
+  id: string;
+  language: Locale;
+  metadata: Record<string, unknown>;
+};
+
 type StorageEnv = Record<string, string | undefined>;
 
 const defaultPublishedStatus = "published" satisfies MorningBrew["status"];
@@ -90,6 +155,17 @@ function normalizeSupabaseUrl(url: string): string {
 
 function toPublishedBriefing(row: SupabaseBriefingRow): MorningBrew {
   return MorningBrewSchema.parse(row.payload);
+}
+
+function toStoredBriefingRecord(row: SupabaseBriefingRow): StoredBriefingRecord {
+  return {
+    briefing: MorningBrewSchema.parse(row.payload),
+    id: row.id,
+    language: LocaleSchema.parse(row.language),
+    publishedAt: row.published_at,
+    slug: row.slug,
+    status: row.status
+  };
 }
 
 function toWritableRow(briefing: MorningBrew): SupabaseWritableBriefingRow {
@@ -138,6 +214,14 @@ function researchRunUrl(baseUrl: string, params: Record<string, string | number>
   return url;
 }
 
+function renderArtifactUrl(baseUrl: string, params: Record<string, string | number>): URL {
+  const url = new URL(`${normalizeSupabaseUrl(baseUrl)}/rest/v1/render_artifacts`);
+  Object.entries(params).forEach(([key, value]) => {
+    url.searchParams.set(key, String(value));
+  });
+  return url;
+}
+
 function toStoredResearchRun(row: SupabaseResearchRunRow): StoredResearchRun {
   return {
     completedAt: row.completed_at,
@@ -153,6 +237,38 @@ function toStoredResearchRun(row: SupabaseResearchRunRow): StoredResearchRun {
   };
 }
 
+function toStoredRenderArtifact(row: SupabaseRenderArtifactRow): StoredRenderArtifact {
+  return {
+    artifactPath: row.artifact_path,
+    artifactUrl: row.artifact_url,
+    briefingId: row.briefing_id,
+    createdAt: row.created_at,
+    format: row.format,
+    id: row.id,
+    language: LocaleSchema.parse(row.language),
+    metadata: row.metadata
+  };
+}
+
+function briefingSelect(): string {
+  return "id,language,payload,published_at,slug,status";
+}
+
+function applyStatusFilter(
+  params: Record<string, string | number>,
+  status: BriefingStatus | "any" | undefined
+): Record<string, string | number> {
+  if (!status || status === "published") {
+    return { ...params, status: `eq.${defaultPublishedStatus}` };
+  }
+
+  if (status === "any") {
+    return params;
+  }
+
+  return { ...params, status: `eq.${status}` };
+}
+
 export function createSupabaseRestBriefingRepository(
   config: SupabaseRestConfig
 ): BriefingRepository {
@@ -160,19 +276,29 @@ export function createSupabaseRestBriefingRepository(
   const headers = supabaseHeaders(config.apiKey);
 
   return {
-    async listBriefings(locale, options = {}) {
+    async listBriefingRecords(locale, options = {}) {
       const parsedLocale = LocaleSchema.parse(locale);
-      const url = briefingUrl(config.url, {
-        language: `eq.${parsedLocale}`,
-        limit: options.limit ?? 50,
-        order: "published_at.desc.nullslast,date.desc",
-        select: "payload",
-        status: `eq.${defaultPublishedStatus}`
-      });
+      const url = briefingUrl(
+        config.url,
+        applyStatusFilter(
+          {
+            language: `eq.${parsedLocale}`,
+            limit: options.limit ?? 50,
+            order: "date.desc,created_at.desc",
+            select: briefingSelect()
+          },
+          options.status
+        )
+      );
       const rows = await parseSupabaseResponse<SupabaseBriefingRow[]>(
         await fetcher(url, { headers })
       );
-      return rows.map(toPublishedBriefing);
+      return rows.map(toStoredBriefingRecord);
+    },
+
+    async listBriefings(locale, options = {}) {
+      const rows = await this.listBriefingRecords(locale, options);
+      return rows.map((row) => row.briefing);
     },
 
     async getLatestBriefing(locale) {
@@ -180,19 +306,61 @@ export function createSupabaseRestBriefingRepository(
       return briefing ?? null;
     },
 
-    async getBriefingBySlug(slug, locale) {
+    async getBriefingRecordBySlug(slug, locale, options = {}) {
       const parsedLocale = LocaleSchema.parse(locale);
-      const url = briefingUrl(config.url, {
-        language: `eq.${parsedLocale}`,
-        limit: 1,
-        select: "payload",
-        slug: `eq.${slug}`,
-        status: `eq.${defaultPublishedStatus}`
-      });
+      const url = briefingUrl(
+        config.url,
+        applyStatusFilter(
+          {
+            language: `eq.${parsedLocale}`,
+            limit: 1,
+            select: briefingSelect(),
+            slug: `eq.${slug}`
+          },
+          options.status
+        )
+      );
       const rows = await parseSupabaseResponse<SupabaseBriefingRow[]>(
         await fetcher(url, { headers })
       );
-      return rows[0] ? toPublishedBriefing(rows[0]) : null;
+      return rows[0] ? toStoredBriefingRecord(rows[0]) : null;
+    },
+
+    async getBriefingBySlug(slug, locale, options = {}) {
+      const row = await this.getBriefingRecordBySlug(slug, locale, options);
+      return row?.briefing ?? null;
+    },
+
+    async publishBriefing(slug, locale, publishedAt = new Date().toISOString()) {
+      const existing = await this.getBriefingRecordBySlug(slug, locale, { status: "any" });
+      if (!existing) {
+        throw new Error(`Briefing ${slug}/${locale} was not found.`);
+      }
+
+      const publishedBriefing = MorningBrewSchema.parse({
+        ...existing.briefing,
+        publishedAt,
+        status: "published"
+      });
+      const url = briefingUrl(config.url, {
+        language: `eq.${LocaleSchema.parse(locale)}`,
+        select: "payload",
+        slug: `eq.${slug}`
+      });
+      const rows = await parseSupabaseResponse<SupabaseBriefingRow[]>(
+        await fetcher(url, {
+          body: JSON.stringify(toWritableRow(publishedBriefing)),
+          headers: {
+            ...headers,
+            Prefer: "return=representation"
+          },
+          method: "PATCH"
+        })
+      );
+      if (!rows[0]) {
+        throw new Error(`Briefing ${slug}/${locale} was not published.`);
+      }
+      return toPublishedBriefing(rows[0]);
     },
 
     async saveBriefing(briefing) {
@@ -215,6 +383,34 @@ export function createSupabaseRestBriefingRepository(
         throw new Error("Supabase did not return the saved briefing row.");
       }
       return toPublishedBriefing(rows[0]);
+    },
+
+    async saveRenderArtifact(input) {
+      const parsedLocale = LocaleSchema.parse(input.language);
+      const url = renderArtifactUrl(config.url, {
+        select: "id,briefing_id,format,language,artifact_url,artifact_path,metadata,created_at"
+      });
+      const rows = await parseSupabaseResponse<SupabaseRenderArtifactRow[]>(
+        await fetcher(url, {
+          body: JSON.stringify({
+            artifact_path: input.artifactPath ?? null,
+            artifact_url: input.artifactUrl ?? null,
+            briefing_id: input.briefingId,
+            format: input.format,
+            language: parsedLocale,
+            metadata: input.metadata ?? {}
+          }),
+          headers: {
+            ...headers,
+            Prefer: "return=representation"
+          },
+          method: "POST"
+        })
+      );
+      if (!rows[0]) {
+        throw new Error("Supabase did not return the saved render artifact row.");
+      }
+      return toStoredRenderArtifact(rows[0]);
     }
   };
 }

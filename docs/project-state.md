@@ -19,6 +19,8 @@ codzienny US100 Morning Brew i publikuje go w czytelnej formie internetowej.
 - Etap 3 pipeline zostal dodany jako skeleton collect/analyze/generate/validate.
 - Etap 4 automatyzacja zostal dodany jako Vercel Cron endpoint z OpenAI adapterem
   i idempotency.
+- Etap 5 approval + newsletter zostal dodany jako prywatny review flow,
+  publikacja po akceptacji i opcjonalny draft newslettera w Kit.
 
 ## Product Principles
 
@@ -46,7 +48,6 @@ codzienny US100 Morning Brew i publikuje go w czytelnej formie internetowej.
 ## Poza pierwsza wersja
 
 - Instagram carousel renderer.
-- Newsletter.
 - Pelny panel redakcyjny.
 - Multi-user auth.
 
@@ -117,6 +118,21 @@ codzienny US100 Morning Brew i publikuje go w czytelnej formie internetowej.
 - Dodano storage repository do claim/complete research runs.
 - Endpoint nadal uzywa fixture collector/analyzer; prawdziwe data providery sa
   nastepnym etapem pracy.
+
+## Wykonane w Etapie 5 - Approval + Newsletter
+
+- Dodano prywatny ekran `/review?token=<US100_REVIEW_SECRET>`.
+- Dodano liste draftow do akceptacji.
+- Dodano podglad pojedynczego draftu pod
+  `/review/[locale]/briefings/[slug]?token=<US100_REVIEW_SECRET>`.
+- Dodano endpoint `POST /api/review/publish`.
+- Po akceptacji briefing zmienia status na `published`, a publiczna strona
+  zaczyna go renderowac.
+- Dodano deterministic newsletter HTML renderer.
+- Dodano Kit API v4 adapter tworzacy broadcast draft po publikacji.
+- Wynik newslettera jest zapisywany w `render_artifacts` jako format
+  `newsletter`.
+- Newsletter nie jest wysylany automatycznie.
 
 ## Ostatnia walidacja
 

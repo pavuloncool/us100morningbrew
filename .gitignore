@@ -5,8 +5,9 @@ node_modules/
 .vercel/
 dist/
 coverage/
+.db-backups/
 .env
 .env.*
 !.env.example
 !.env.local.example
-
+supabase/.temp/
