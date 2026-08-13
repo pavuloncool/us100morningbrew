@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 
 import { BriefingView } from "@/components/briefing";
@@ -7,7 +8,11 @@ import {
   impactLabel,
   isAppLocale
 } from "@/lib/briefings";
-import { firstSearchParam, hasReviewAccess } from "@/lib/review-auth";
+import {
+  firstSearchParam,
+  hasReviewAccess,
+  reviewSessionCookieName
+} from "@/lib/review-auth";
 
 type ReviewBriefingPageProps = {
   params: Promise<{
@@ -28,18 +33,22 @@ export default async function ReviewBriefingPage({
   const token = firstSearchParam(query.token);
   const publishStatus = firstSearchParam(query.published);
   const newsletterStatus = firstSearchParam(query.newsletter);
+  const cookieStore = await cookies();
+  const session = cookieStore.get(reviewSessionCookieName)?.value;
 
   if (!isAppLocale(locale)) {
     notFound();
   }
 
-  if (!hasReviewAccess(token)) {
+  if (!hasReviewAccess({ session, token })) {
     return (
       <main className="page">
         <section className="review-panel">
           <p className="eyebrow">Review</p>
           <h1>Brak dostępu</h1>
-          <p>Ten ekran wymaga prywatnego tokenu redakcyjnego.</p>
+          <p>
+            <a href="/review/login">Zaloguj się, żeby zobaczyć ekran redakcyjny.</a>
+          </p>
         </section>
       </main>
     );
@@ -74,9 +83,14 @@ export default async function ReviewBriefingPage({
           ) : null}
         </div>
         <div className="review-actions">
-          <a className="button-secondary" href={`/review?token=${token}`}>
+          <a className="button-secondary" href={token ? `/review?token=${token}` : "/review"}>
             Wróć do listy
           </a>
+          <form action="/api/review/logout" method="post">
+            <button className="button-secondary" type="submit">
+              Wyloguj
+            </button>
+          </form>
           {record.status === "published" ? (
             <a className="button-primary" href={publicHref}>
               Zobacz publicznie

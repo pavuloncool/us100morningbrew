@@ -56,6 +56,8 @@ OPENAI_MODEL=gpt-5
 US100_GENERATION_TARGET_STATUS=draft
 US100_CRON_LOCALES=pl,en
 US100_REVIEW_SECRET=<private-review-token>
+US100_REVIEW_EMAILS=<email-1,email-2>
+SUPABASE_ANON_KEY=<supabase-anon-key>
 ```
 
 Rekomendacja produkcyjna: `US100_GENERATION_TARGET_STATUS=draft`.
@@ -63,11 +65,15 @@ Briefing staje sie publiczny dopiero po akceptacji w `/review`.
 
 ## Approval
 
-Prywatny ekran:
+Prywatny ekran logowania:
 
 ```txt
-GET /review?token=$US100_REVIEW_SECRET
+GET /review/login
 ```
+
+Uzytkownik wpisuje e-mail z allowlisty `US100_REVIEW_EMAILS`, otrzymuje kod,
+wpisuje kod i uzyskuje dostep do `/review` przez sesje cookie. Stary wariant
+`/review?token=$US100_REVIEW_SECRET` zostaje jako awaryjny fallback.
 
 Po akceptacji:
 

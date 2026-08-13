@@ -5,14 +5,15 @@ Etap 5 dodaje human-in-the-loop przed publikacja i newsletterem.
 ## Przeplyw
 
 1. Cron generuje Morning Brew jako `draft`.
-2. Prywatny ekran `/review?token=<US100_REVIEW_SECRET>` pokazuje drafty do
-   akceptacji.
-3. Po kliknieciu "Zaakceptuj i opublikuj" system zmienia briefing na
+2. Prywatny ekran `/review/login` wysyla kod logowania na dozwolony adres e-mail.
+3. Po wpisaniu kodu aplikacja zapisuje sesje redakcyjna w cookie.
+4. Prywatny ekran `/review` pokazuje drafty do akceptacji.
+5. Po kliknieciu "Zaakceptuj i opublikuj" system zmienia briefing na
    `published`.
-4. Publiczna strona zaczyna widziec briefing, bo web app renderuje tylko
+6. Publiczna strona zaczyna widziec briefing, bo web app renderuje tylko
    `published`.
-5. Po publikacji system probuje utworzyc draft newslettera w Kit.
-6. Newsletter nie jest wysylany automatycznie; w Kit pozostaje jako draft do
+7. Po publikacji system probuje utworzyc draft newslettera w Kit.
+8. Newsletter nie jest wysylany automatycznie; w Kit pozostaje jako draft do
    dalszej decyzji.
 
 ## Env
@@ -20,6 +21,8 @@ Etap 5 dodaje human-in-the-loop przed publikacja i newsletterem.
 ```bash
 US100_GENERATION_TARGET_STATUS=draft
 US100_REVIEW_SECRET=<prywatny sekret do review>
+US100_REVIEW_EMAILS=<email-1,email-2>
+SUPABASE_ANON_KEY=<supabase-anon-key>
 NEXT_PUBLIC_APP_URL=https://<production-domain>
 
 US100_NEWSLETTER_PROVIDER=kit
@@ -28,6 +31,9 @@ KIT_EMAIL_TEMPLATE_ID=<optional-template-id>
 KIT_BROADCAST_PUBLIC=false
 KIT_SUBSCRIBER_FILTER=<optional-json-filter>
 ```
+
+`US100_REVIEW_EMAILS` ogranicza, kto moze dostac kod logowania do panelu
+redakcyjnego.
 
 Jesli `US100_NEWSLETTER_PROVIDER` nie jest ustawione na `kit`, approval nadal
 publikuje briefing na stronie, ale pomija tworzenie newslettera.
@@ -46,6 +52,7 @@ Tworzony jest broadcast draft:
 
 ## Status
 
+- Logowanie redakcyjne jest w `/review/login`.
 - Prywatna lista draftow jest w `/review`.
 - Podglad draftu jest w `/review/[locale]/briefings/[slug]`.
 - Publikacja idzie przez `POST /api/review/publish`.

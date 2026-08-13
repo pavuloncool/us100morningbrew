@@ -1,5 +1,12 @@
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+
 import { listBriefingRecords, appLocales, formatDate, impactLabel } from "@/lib/briefings";
-import { firstSearchParam, hasReviewAccess } from "@/lib/review-auth";
+import {
+  firstSearchParam,
+  hasReviewAccess,
+  reviewSessionCookieName
+} from "@/lib/review-auth";
 
 type ReviewPageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -10,17 +17,11 @@ export const dynamic = "force-dynamic";
 export default async function ReviewPage({ searchParams }: ReviewPageProps) {
   const query = await searchParams;
   const token = firstSearchParam(query.token);
+  const cookieStore = await cookies();
+  const session = cookieStore.get(reviewSessionCookieName)?.value;
 
-  if (!hasReviewAccess(token)) {
-    return (
-      <main className="page">
-        <section className="review-panel">
-          <p className="eyebrow">Review</p>
-          <h1>Brak dostępu</h1>
-          <p>Ten ekran wymaga prywatnego tokenu redakcyjnego.</p>
-        </section>
-      </main>
-    );
+  if (!hasReviewAccess({ session, token })) {
+    redirect("/review/login");
   }
 
   const draftsByLocale = await Promise.all(
@@ -52,7 +53,13 @@ export default async function ReviewPage({ searchParams }: ReviewPageProps) {
           <ul className="review-list">
             {allDrafts.map((record) => (
               <li key={`${record.locale}:${record.slug}`}>
-                <a href={`/review/${record.locale}/briefings/${record.slug}?token=${token}`}>
+                <a
+                  href={
+                    token
+                      ? `/review/${record.locale}/briefings/${record.slug}?token=${token}`
+                      : `/review/${record.locale}/briefings/${record.slug}`
+                  }
+                >
                   <span className="eyebrow">
                     {record.locale.toUpperCase()} / {formatDate(record.briefing.date, record.locale)}
                   </span>
@@ -66,6 +73,11 @@ export default async function ReviewPage({ searchParams }: ReviewPageProps) {
           </ul>
         )}
       </section>
+      <form action="/api/review/logout" method="post">
+        <button className="button-secondary" type="submit">
+          Wyloguj
+        </button>
+      </form>
     </main>
   );
 }

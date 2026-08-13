@@ -7,7 +7,11 @@ import {
   saveRenderArtifact
 } from "@/lib/briefings";
 import { createNewsletterDraft } from "@/lib/newsletter";
-import { hasReviewAccess, reviewTokenFromAuthorization } from "@/lib/review-auth";
+import {
+  hasReviewAccess,
+  reviewSessionCookieName,
+  reviewTokenFromAuthorization
+} from "@/lib/review-auth";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -40,8 +44,9 @@ export async function POST(request: NextRequest) {
     (formData?.get("token")?.toString() ?? undefined) ||
     (typeof jsonData?.token === "string" ? jsonData.token : undefined) ||
     reviewTokenFromAuthorization(request.headers.get("authorization"));
+  const session = request.cookies.get(reviewSessionCookieName)?.value;
 
-  if (!hasReviewAccess(token)) {
+  if (!hasReviewAccess({ session, token })) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 

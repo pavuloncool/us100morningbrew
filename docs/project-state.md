@@ -121,10 +121,12 @@ codzienny US100 Morning Brew i publikuje go w czytelnej formie internetowej.
 
 ## Wykonane w Etapie 5 - Approval + Newsletter
 
-- Dodano prywatny ekran `/review?token=<US100_REVIEW_SECRET>`.
+- Dodano prywatne logowanie redakcyjne `/review/login` z kodem e-mail przez
+  Supabase Auth.
+- Dodano allowliste `US100_REVIEW_EMAILS`.
 - Dodano liste draftow do akceptacji.
 - Dodano podglad pojedynczego draftu pod
-  `/review/[locale]/briefings/[slug]?token=<US100_REVIEW_SECRET>`.
+  `/review/[locale]/briefings/[slug]`.
 - Dodano endpoint `POST /api/review/publish`.
 - Po akceptacji briefing zmienia status na `published`, a publiczna strona
   zaczyna go renderowac.
