@@ -9,6 +9,7 @@ import {
 export type ResearchRunContext = {
   date: string;
   locale: Locale;
+  minEvidenceSources?: number;
   now?: Date;
   runId?: string;
   slugSuffix?: string;
@@ -295,6 +296,14 @@ export const defaultQualityGates: QualityGate[] = [
     id: "evidence_and_sources",
     run(briefing, input) {
       const issues: QualityGateIssue[] = [];
+      const minEvidenceSources = input.context.minEvidenceSources ?? 1;
+      if (input.evidencePack.sources.length < minEvidenceSources) {
+        issues.push({
+          gateId: "evidence_and_sources",
+          message: `Evidence pack has ${input.evidencePack.sources.length} sources; minimum is ${minEvidenceSources}.`,
+          severity: "error"
+        });
+      }
       if (input.evidencePack.sources.length === 0 || briefing.sources.length === 0) {
         issues.push({
           gateId: "evidence_and_sources",

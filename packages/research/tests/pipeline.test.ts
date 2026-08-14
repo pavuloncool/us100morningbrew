@@ -196,6 +196,54 @@ describe("Morning Brew pipeline", () => {
     expect(result.briefing.sources.map((source) => source.id)).toEqual(["source-a", "source-b"]);
   });
 
+  it("fails quality gates when a run requires more evidence sources than were collected", async () => {
+    const briefing = getLatestBriefing("pl");
+    const pipeline = createMorningBrewPipeline({
+      analyzer: createFixtureAnalyzer(),
+      collector: {
+        async collect() {
+          return {
+            collectedAt: "2026-08-13T06:00:00.000Z",
+            date: context.date,
+            locale: context.locale,
+            snapshots: [
+              {
+                capturedAt: "2026-08-13T06:00:00.000Z",
+                payload: { value: "test" },
+                source: "source-a"
+              }
+            ],
+            sources: [
+              {
+                id: "source-a",
+                observedAt: "2026-08-13T06:00:00.000Z",
+                publisher: "Test publisher",
+                title: "Source A",
+                url: "https://example.com/source-a"
+              }
+            ]
+          };
+        }
+      },
+      generator: {
+        async generate() {
+          return {
+            ...briefing,
+            date: context.date
+          };
+        }
+      }
+    });
+
+    const result = await pipeline.run({
+      ...context,
+      minEvidenceSources: 8
+    });
+
+    expect(result.status).toBe("failed");
+    expect(result.quality.issues.some((issue) => issue.message.includes("minimum is 8"))).toBe(true);
+  });
+
   it("adds a slug suffix for manual review runs", async () => {
     const pipeline = createFixtureMorningBrewPipeline();
     const result = await pipeline.run({

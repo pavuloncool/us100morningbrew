@@ -74,25 +74,82 @@ function formatRunDiagnostics(metrics: Record<string, unknown>): string | null {
     typeof metrics.timingsMs === "object" && metrics.timingsMs !== null
       ? (metrics.timingsMs as Record<string, unknown>)
       : null;
-  if (!timings) {
-    return null;
+
+  const parts: string[] = [];
+
+  if (metrics.runSource === "review-full") {
+    parts.push("tryb: pełny research");
+  } else if (metrics.runSource === "review-quick") {
+    parts.push("tryb: szybki test");
+  } else if (metrics.runSource === "vercel-cron") {
+    parts.push("tryb: cron");
   }
 
-  const parts = [
-    ["research", formatSeconds(timings.collect)],
-    ["analiza", formatSeconds(timings.analyze)],
-    ["OpenAI", formatSeconds(timings.generate)],
-    ["zapis", formatSeconds(timings.save)],
-    ["razem", formatSeconds(timings.total)]
-  ]
-    .filter((item): item is [string, string] => item[1] !== null)
-    .map(([label, value]) => `${label}: ${value}`);
+  if (timings) {
+    parts.push(
+      ...[
+        ["research", formatSeconds(timings.collect)],
+        ["analiza", formatSeconds(timings.analyze)],
+        ["OpenAI", formatSeconds(timings.generate)],
+        ["zapis", formatSeconds(timings.save)],
+        ["razem", formatSeconds(timings.total)]
+      ]
+        .filter((item): item is [string, string] => item[1] !== null)
+        .map(([label, value]) => `${label}: ${value}`)
+    );
+  }
 
   if (typeof metrics.evidenceSources === "number") {
     parts.push(`źródła: ${metrics.evidenceSources}`);
   }
+  if (typeof metrics.evidenceSnapshots === "number") {
+    parts.push(`snapshoty: ${metrics.evidenceSnapshots}`);
+  }
+  if (typeof metrics.sourceBreakdown === "object" && metrics.sourceBreakdown !== null) {
+    const breakdown = metrics.sourceBreakdown as Record<string, unknown>;
+    const sourceParts = ["stooq", "fred", "news", "other"]
+      .map((key) => (typeof breakdown[key] === "number" ? `${key}: ${breakdown[key]}` : null))
+      .filter((item): item is string => item !== null);
+    if (sourceParts.length > 0) {
+      parts.push(`koszyki: ${sourceParts.join(", ")}`);
+    }
+  }
 
   return parts.length > 0 ? parts.join(" / ") : null;
+}
+
+function formatRunIssues(metrics: Record<string, unknown>): string | null {
+  const issues = Array.isArray(metrics.issues) ? metrics.issues : [];
+  const messages = issues
+    .map((issue) => {
+      if (typeof issue !== "object" || issue === null || !("message" in issue)) {
+        return null;
+      }
+      const message = (issue as { message?: unknown }).message;
+      return typeof message === "string" ? message : null;
+    })
+    .filter((message): message is string => message !== null);
+
+  return messages.length > 0 ? `Quality gates: ${messages.join(" | ")}` : null;
+}
+
+function formatSnapshotErrors(metrics: Record<string, unknown>): string | null {
+  const errors = Array.isArray(metrics.snapshotErrors) ? metrics.snapshotErrors : [];
+  const messages = errors
+    .map((error) => {
+      if (typeof error !== "object" || error === null) {
+        return null;
+      }
+      const item = error as { error?: unknown; label?: unknown; source?: unknown };
+      if (typeof item.error !== "string" || typeof item.source !== "string") {
+        return null;
+      }
+      const label = typeof item.label === "string" ? `${item.label}: ` : "";
+      return `${item.source} - ${label}${item.error}`;
+    })
+    .filter((message): message is string => message !== null);
+
+  return messages.length > 0 ? `Błędy źródeł: ${messages.join(" | ")}` : null;
 }
 
 function rerunMessage(status: string | undefined): string | null {
@@ -204,6 +261,8 @@ export default async function ReviewPage({ searchParams }: ReviewPageProps) {
             {recentRuns.map((run) => {
               const stale = isStaleRunningRun(run);
               const diagnostics = formatRunDiagnostics(run.metrics);
+              const issueDiagnostics = formatRunIssues(run.metrics);
+              const sourceErrors = formatSnapshotErrors(run.metrics);
               return (
                 <li key={run.id}>
                   <div>
@@ -218,6 +277,10 @@ export default async function ReviewPage({ searchParams }: ReviewPageProps) {
                   </span>
                   {run.errorMessage ? <p>{run.errorMessage}</p> : null}
                   {diagnostics ? <p className="review-run-diagnostics">{diagnostics}</p> : null}
+                  {issueDiagnostics ? (
+                    <p className="review-run-diagnostics">{issueDiagnostics}</p>
+                  ) : null}
+                  {sourceErrors ? <p className="review-run-diagnostics">{sourceErrors}</p> : null}
                   {stale ? (
                     <p>
                       To uruchomienie prawdopodobnie zostało przerwane przez timeout Vercel.

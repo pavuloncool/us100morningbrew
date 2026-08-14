@@ -3,6 +3,7 @@ export type RerunMode = (typeof rerunModes)[number];
 
 export type RerunAutomationOptions = {
   idempotencyScope: string;
+  minEvidenceSources?: number;
   runSource: string;
   slugSuffix: string;
 };
@@ -55,10 +56,19 @@ export function createRerunEnv(
   return mode === "full" ? fullRerunEnv(env) : quickRerunEnv(env);
 }
 
-export function rerunOptions(mode: RerunMode): RerunAutomationOptions {
+function positiveInteger(value: string | undefined, fallback: number): number {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+export function rerunOptions(
+  mode: RerunMode,
+  env: Record<string, string | undefined> = process.env
+): RerunAutomationOptions {
   return mode === "full"
     ? {
         idempotencyScope: "manual-full",
+        minEvidenceSources: positiveInteger(env.US100_FULL_RERUN_MIN_SOURCES, 8),
         runSource: "review-full",
         slugSuffix: "full-research-test"
       }

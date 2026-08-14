@@ -33,6 +33,7 @@ describe("review rerun modes", () => {
     });
     expect(rerunOptions("full")).toMatchObject({
       idempotencyScope: "manual-full",
+      minEvidenceSources: 8,
       slugSuffix: "full-research-test"
     });
   });

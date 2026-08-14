@@ -35,6 +35,7 @@ export type MorningBrewAutomationOptions = {
   force?: boolean;
   idempotencyScope?: string;
   locales?: AppLocale[];
+  minEvidenceSources?: number;
   now?: Date;
   runSource?: string;
   slugSuffix?: string;
@@ -132,6 +133,42 @@ function statusForBriefing(briefing: MorningBrew): "drafted" | "published" {
   return briefing.status === "published" ? "published" : "drafted";
 }
 
+function sourceBreakdown(sources: Array<{ id: string }>): Record<string, number> {
+  return sources.reduce<Record<string, number>>(
+    (breakdown, source) => {
+      const bucket = source.id.startsWith("stooq-")
+        ? "stooq"
+        : source.id.startsWith("fred-")
+          ? "fred"
+          : source.id.startsWith("news-")
+            ? "news"
+            : "other";
+      breakdown[bucket] = (breakdown[bucket] ?? 0) + 1;
+      return breakdown;
+    },
+    { fred: 0, news: 0, other: 0, stooq: 0 }
+  );
+}
+
+function snapshotErrors(
+  snapshots: Array<{ payload: Record<string, unknown>; source: string }>
+): Array<{ error: string; label: string | null; source: string }> {
+  return snapshots
+    .map((snapshot) => {
+      const error = snapshot.payload.error;
+      if (typeof error !== "string") {
+        return null;
+      }
+      return {
+        error,
+        label: typeof snapshot.payload.label === "string" ? snapshot.payload.label : null,
+        source: snapshot.source
+      };
+    })
+    .filter((item): item is { error: string; label: string | null; source: string } => item !== null)
+    .slice(0, 8);
+}
+
 function isSupabaseConfigured(env: AutomationEnv): boolean {
   return Boolean(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_ANON_KEY));
 }
@@ -216,6 +253,7 @@ export async function runMorningBrewAutomation(
     const result = await pipeline.run({
       date,
       locale: locale satisfies Locale,
+      minEvidenceSources: options.minEvidenceSources,
       now,
       runId: claim.run.id,
       slugSuffix: options.slugSuffix,
@@ -227,8 +265,12 @@ export async function runMorningBrewAutomation(
         metrics: {
           evidenceSnapshots: result.evidencePack.snapshots.length,
           evidenceSources: result.evidencePack.sources.length,
+          idempotencyScope: options.idempotencyScope ?? "cron",
           issues: result.quality.issues,
+          runSource,
           slug: result.briefing.slug,
+          snapshotErrors: snapshotErrors(result.evidencePack.snapshots),
+          sourceBreakdown: sourceBreakdown(result.evidencePack.sources),
           status: result.briefing.status,
           timingsMs: result.timingsMs
         },
@@ -249,7 +291,11 @@ export async function runMorningBrewAutomation(
       metrics: {
         evidenceSnapshots: result.evidencePack?.snapshots.length ?? null,
         evidenceSources: result.evidencePack?.sources.length ?? null,
+        idempotencyScope: options.idempotencyScope ?? "cron",
         issues: result.quality.issues,
+        runSource,
+        snapshotErrors: result.evidencePack ? snapshotErrors(result.evidencePack.snapshots) : [],
+        sourceBreakdown: result.evidencePack ? sourceBreakdown(result.evidencePack.sources) : null,
         timingsMs: result.timingsMs
       },
       status: "failed"

@@ -95,11 +95,14 @@ US100_FULL_RERUN_OPENAI_MAX_OUTPUT_TOKENS=6500
 US100_FULL_RERUN_OPENAI_REASONING_EFFORT=minimal
 US100_FULL_RERUN_OPENAI_TEXT_VERBOSITY=low
 US100_FULL_RERUN_NEWS_RSS_ENABLED=true
+US100_FULL_RERUN_MIN_SOURCES=8
 ```
 
 Pelny reczny research uzywa tego samego modelu zrodel co budget cron:
 Stooq/FRED/RSS zgodnie z konfiguracja env. Zapisuje osobny draft ze slugiem
 `full-research-test`, zeby nie nadpisac juz opublikowanego briefingu dnia.
+Domyslnie wymaga minimum 8 zrodel; jesli zewnetrzne serwisy zwroca mniej,
+run konczy sie bledem jakosci zamiast zapisywac zbyt ubogi draft.
 
 ## Approval
 
