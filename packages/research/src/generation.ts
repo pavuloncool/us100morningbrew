@@ -7,6 +7,7 @@ type OpenAIResponsesGenerationClientConfig = {
   baseUrl?: string;
   fetch?: FetchLike;
   model?: string;
+  requestTimeoutMs?: number;
 };
 
 export type StructuredBriefingGenerationRequest = {
@@ -281,38 +282,46 @@ export function createOpenAIResponsesGenerationClient(
   const fetcher = config.fetch ?? fetch;
   const baseUrl = config.baseUrl ?? "https://api.openai.com";
   const model = config.model ?? "gpt-5-mini";
+  const requestTimeoutMs = config.requestTimeoutMs ?? 45_000;
 
   return {
     async generateMorningBrew(request) {
-      const response = await fetcher(new URL("/v1/responses", baseUrl), {
-        body: JSON.stringify({
-          input: buildOpenAIInput(request),
-          model,
-          store: false,
-          text: {
-            format: {
-              description:
-                "A complete structured US100 Morning Brew payload ready for schema validation and publication.",
-              name: "us100_morning_brew",
-              schema: morningBrewJsonSchema,
-              strict: true,
-              type: "json_schema"
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), requestTimeoutMs);
+      try {
+        const response = await fetcher(new URL("/v1/responses", baseUrl), {
+          body: JSON.stringify({
+            input: buildOpenAIInput(request),
+            model,
+            store: false,
+            text: {
+              format: {
+                description:
+                  "A complete structured US100 Morning Brew payload ready for schema validation and publication.",
+                name: "us100_morning_brew",
+                schema: morningBrewJsonSchema,
+                strict: true,
+                type: "json_schema"
+              }
             }
-          }
-        }),
-        headers: {
-          Authorization: `Bearer ${config.apiKey}`,
-          "Content-Type": "application/json"
-        },
-        method: "POST"
-      });
+          }),
+          headers: {
+            Authorization: `Bearer ${config.apiKey}`,
+            "Content-Type": "application/json"
+          },
+          method: "POST",
+          signal: controller.signal
+        });
 
-      const responseBody = (await response.json()) as unknown;
-      if (!response.ok) {
-        throw new Error(`OpenAI Responses API failed with ${response.status}: ${JSON.stringify(responseBody)}`);
+        const responseBody = (await response.json()) as unknown;
+        if (!response.ok) {
+          throw new Error(`OpenAI Responses API failed with ${response.status}: ${JSON.stringify(responseBody)}`);
+        }
+
+        return JSON.parse(extractResponseText(responseBody));
+      } finally {
+        clearTimeout(timeout);
       }
-
-      return JSON.parse(extractResponseText(responseBody));
     }
   };
 }
@@ -327,6 +336,7 @@ export function createOpenAIResponsesGenerationClientFromEnv(
 
   return createOpenAIResponsesGenerationClient({
     apiKey,
-    model: env.OPENAI_MODEL ?? "gpt-5-mini"
+    model: env.OPENAI_MODEL ?? "gpt-5-mini",
+    requestTimeoutMs: Number(env.OPENAI_REQUEST_TIMEOUT_MS ?? 45_000)
   });
 }

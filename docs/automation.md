@@ -67,6 +67,19 @@ FRED_API_KEY=<optional-free-fred-api-key>
 Rekomendacja produkcyjna: `US100_GENERATION_TARGET_STATUS=draft`.
 Briefing staje sie publiczny dopiero po akceptacji w `/review`.
 
+Opcjonalne limity dla recznego przycisku w `/review`:
+
+```bash
+US100_RERUN_MAX_REQUESTS=12
+US100_RERUN_REQUEST_TIMEOUT_MS=4000
+US100_RERUN_OPENAI_TIMEOUT_MS=35000
+US100_RERUN_NEWS_RSS_ENABLED=false
+```
+
+Reczny rerun jest celowo krotszy niz poranny cron: domyslnie uruchamia tylko
+wersje PL, bez RSS news, z mniejsza liczba zapytan i limitem OpenAI ustawionym
+tak, zeby funkcja zdazyla zapisac wynik albo blad przed timeoutem Vercel.
+
 ## Approval
 
 Prywatny ekran logowania:
@@ -85,6 +98,11 @@ Po akceptacji:
 - publiczna strona zaczyna renderowac briefing,
 - system probuje utworzyc draft newslettera w Kit, jesli Kit jest
   skonfigurowany.
+
+W `/review` jest tez przycisk do recznego ponowienia dzisiejszego briefingu PL.
+Jest przeznaczony do testow i napraw po bledzie. Jezeli poprzednie uruchomienie
+zostalo przerwane przez timeout Vercel i zostalo w statusie `running`, system po
+5 minutach traktuje je jako przeterminowane i pozwala je ponowic.
 
 ## Newsletter / Kit
 
@@ -124,6 +142,10 @@ curl \
 - Idempotency jest gotowe na poziomie storage/research_runs.
 - Failed research runs moga byc ponowione po naprawie przyczyny bledu, bez
   recznego czyszczenia bazy.
+- Stale `running` research runs po timeoutach Vercel moga byc ponowione po 5
+  minutach, bez recznego czyszczenia bazy.
 - OpenAI Responses API adapter jest gotowy.
+- OpenAI Responses API adapter ma limit czasu konfigurowany przez
+  `OPENAI_REQUEST_TIMEOUT_MS`; reczny rerun uzywa `US100_RERUN_OPENAI_TIMEOUT_MS`.
 - Budget Research Pipeline jest dostepny przez `US100_RESEARCH_PROVIDER=budget`.
   Uzywa low-cost daily data i nie pobiera real-time market data.

@@ -258,16 +258,17 @@ describe("storage repository", () => {
 
   it("claims research runs idempotently", async () => {
     const requests: Array<{ body?: unknown; method: string; url: string }> = [];
+    const now = new Date().toISOString();
     const existingRun = {
       completed_at: null,
-      created_at: "2026-08-13T06:00:00.000Z",
+      created_at: now,
       error_message: null,
       id: "run-1",
       idempotency_key: "morning-brew:2026-08-13:pl",
       language: "pl",
       metrics: {},
       run_date: "2026-08-13",
-      started_at: "2026-08-13T06:00:00.000Z",
+      started_at: now,
       status: "running"
     };
     let inserted = false;
@@ -384,6 +385,70 @@ describe("storage repository", () => {
 
     expect(claim.acquired).toBe(true);
     expect(claim.run.status).toBe("running");
+    expect(requests.some((request) => request.method === "PATCH")).toBe(true);
+  });
+
+  it("retries a stale running research run after a timeout", async () => {
+    const requests: Array<{ body?: unknown; method: string; url: string }> = [];
+    const staleRun = {
+      completed_at: null,
+      created_at: "2026-08-13T06:00:00.000Z",
+      error_message: null,
+      id: "run-1",
+      idempotency_key: "morning-brew:2026-08-13:pl",
+      language: "pl",
+      metrics: {},
+      run_date: "2026-08-13",
+      started_at: "2026-08-13T06:00:00.000Z",
+      status: "running"
+    };
+    const repository = createSupabaseRestResearchRunRepository({
+      apiKey: "test-key",
+      url: "https://example.supabase.co",
+      fetch: async (input, init) => {
+        requests.push({
+          body: init?.body ? JSON.parse(String(init.body)) : undefined,
+          method: init?.method ?? "GET",
+          url: String(input)
+        });
+
+        if (init?.method === "POST") {
+          return new Response(JSON.stringify([]), {
+            headers: { "Content-Type": "application/json" },
+            status: 201
+          });
+        }
+
+        if (init?.method === "PATCH") {
+          return new Response(
+            JSON.stringify([
+              {
+                ...staleRun,
+                started_at: new Date().toISOString(),
+                status: "running"
+              }
+            ]),
+            {
+              headers: { "Content-Type": "application/json" },
+              status: 200
+            }
+          );
+        }
+
+        return new Response(JSON.stringify([staleRun]), {
+          headers: { "Content-Type": "application/json" },
+          status: 200
+        });
+      }
+    });
+
+    const claim = await repository.claimResearchRun({
+      idempotencyKey: "morning-brew:2026-08-13:pl",
+      locale: "pl",
+      runDate: "2026-08-13"
+    });
+
+    expect(claim.acquired).toBe(true);
     expect(requests.some((request) => request.method === "PATCH")).toBe(true);
   });
 

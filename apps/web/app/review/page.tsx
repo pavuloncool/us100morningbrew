@@ -6,7 +6,8 @@ import {
   appLocales,
   formatDate,
   impactLabel,
-  listResearchRuns
+  listResearchRuns,
+  type AppLocale
 } from "@/lib/briefings";
 import {
   firstSearchParam,
@@ -20,7 +21,19 @@ type ReviewPageProps = {
 
 export const dynamic = "force-dynamic";
 
-function runStatusLabel(status: string): string {
+const staleRunningRunMs = 5 * 60 * 1000;
+
+function isStaleRunningRun(run: { startedAt: string; status: string }): boolean {
+  if (run.status !== "running") {
+    return false;
+  }
+  return Date.now() - new Date(run.startedAt).getTime() > staleRunningRunMs;
+}
+
+function runStatusLabel(status: string, stale = false): string {
+  if (stale) {
+    return "Przerwany";
+  }
   switch (status) {
     case "drafted":
       return "Draft zapisany";
@@ -56,7 +69,7 @@ function rerunMessage(status: string | undefined): string | null {
     case "failed":
       return "Ponowne uruchomienie zakończyło się błędem. Szczegóły są w sekcji Ostatnie uruchomienia.";
     case "skipped":
-      return "Ponowne uruchomienie zostało pominięte.";
+      return "Ponowne uruchomienie zostało pominięte, bo dzisiejszy briefing jest już w toku albo został zapisany.";
     default:
       return null;
   }
@@ -102,14 +115,11 @@ export default async function ReviewPage({ searchParams }: ReviewPageProps) {
               Uruchom dzisiejszy briefing PL
             </button>
           </form>
-          <form action="/api/review/rerun" method="post">
-            {token ? <input name="token" type="hidden" value={token} /> : null}
-            <input name="locales" type="hidden" value="pl,en" />
-            <button className="button-secondary" type="submit">
-              Uruchom PL + EN
-            </button>
-          </form>
         </div>
+        <p className="review-actions-note">
+          Test ręczny działa w skróconym trybie PL, żeby zmieścić się w limicie Vercel. Pełne
+          uruchomienie PL + EN zostaje dla porannego crona.
+        </p>
       </section>
 
       <section className="review-panel">
@@ -149,20 +159,30 @@ export default async function ReviewPage({ searchParams }: ReviewPageProps) {
           </p>
         ) : (
           <ul className="review-run-list">
-            {recentRuns.map((run) => (
-              <li key={run.id}>
-                <div>
-                  <strong>
-                    {formatDate(run.runDate, run.language)} / {run.language.toUpperCase()}
-                  </strong>
-                  <span>{formatRunTime(run.completedAt ?? run.startedAt)}</span>
-                </div>
-                <span className="tone" data-run-status={run.status}>
-                  {runStatusLabel(run.status)}
-                </span>
-                {run.errorMessage ? <p>{run.errorMessage}</p> : null}
-              </li>
-            ))}
+            {recentRuns.map((run) => {
+              const stale = isStaleRunningRun(run);
+              return (
+                <li key={run.id}>
+                  <div>
+                    <strong>
+                      {formatDate(run.runDate, run.language as AppLocale)} /{" "}
+                      {run.language.toUpperCase()}
+                    </strong>
+                    <span>{formatRunTime(run.completedAt ?? run.startedAt)}</span>
+                  </div>
+                  <span className="tone" data-run-status={stale ? "failed" : run.status}>
+                    {runStatusLabel(run.status, stale)}
+                  </span>
+                  {run.errorMessage ? <p>{run.errorMessage}</p> : null}
+                  {stale ? (
+                    <p>
+                      To uruchomienie prawdopodobnie zostało przerwane przez timeout Vercel.
+                      Możesz uruchomić dzisiejszy briefing PL ponownie.
+                    </p>
+                  ) : null}
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>

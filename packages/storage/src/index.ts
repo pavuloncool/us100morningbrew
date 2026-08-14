@@ -153,6 +153,7 @@ type SupabaseRenderArtifactRow = {
 type StorageEnv = Record<string, string | undefined>;
 
 const defaultPublishedStatus = "published" satisfies MorningBrew["status"];
+const staleRunningRunMs = 5 * 60 * 1000;
 
 function normalizeSupabaseUrl(url: string): string {
   return url.endsWith("/") ? url.slice(0, -1) : url;
@@ -253,6 +254,16 @@ function toStoredRenderArtifact(row: SupabaseRenderArtifactRow): StoredRenderArt
     language: LocaleSchema.parse(row.language),
     metadata: row.metadata
   };
+}
+
+function canRetryResearchRun(row: SupabaseResearchRunRow): boolean {
+  if (row.status === "failed") {
+    return true;
+  }
+  if (row.status !== "running") {
+    return false;
+  }
+  return Date.now() - new Date(row.started_at).getTime() > staleRunningRunMs;
 }
 
 function briefingSelect(): string {
@@ -469,7 +480,7 @@ export function createSupabaseRestResearchRunRepository(
       if (!existingRows[0]) {
         throw new Error(`Could not claim or find research run ${input.idempotencyKey}.`);
       }
-      if (existingRows[0].status === "failed") {
+      if (canRetryResearchRun(existingRows[0])) {
         const retryUrl = researchRunUrl(config.url, {
           id: `eq.${existingRows[0].id}`,
           select

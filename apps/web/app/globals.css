@@ -458,6 +458,13 @@ select {
   justify-content: flex-start;
 }
 
+.review-actions-note {
+  color: var(--muted);
+  font-size: 15px;
+  margin: var(--space-3) 0 0;
+  max-width: 680px;
+}
+
 .button-primary,
 .button-secondary {
   appearance: none;
