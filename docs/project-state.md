@@ -21,6 +21,8 @@ codzienny US100 Morning Brew i publikuje go w czytelnej formie internetowej.
   i idempotency.
 - Etap 5 approval + newsletter zostal dodany jako prywatny review flow,
   publikacja po akceptacji i opcjonalny draft newslettera w Kit.
+- Etap 6 Budget Research Pipeline zostal dodany jako pierwsze low-cost daily
+  data ingestion przed generowaniem.
 
 ## Product Principles
 
@@ -116,8 +118,9 @@ codzienny US100 Morning Brew i publikuje go w czytelnej formie internetowej.
 - Dodano strict JSON schema dla structured output przekazywany do OpenAI.
 - Dodano idempotency dla `research_runs` przez `idempotency_key`.
 - Dodano storage repository do claim/complete research runs.
-- Endpoint nadal uzywa fixture collector/analyzer; prawdziwe data providery sa
-  nastepnym etapem pracy.
+- Endpoint moze uzywac `US100_RESEARCH_PROVIDER=budget`, czyli low-cost daily
+  data collector/analyzer.
+- Failed research runs moga byc ponowione po naprawie przyczyny bledu.
 
 ## Wykonane w Etapie 5 - Approval + Newsletter
 
@@ -135,6 +138,24 @@ codzienny US100 Morning Brew i publikuje go w czytelnej formie internetowej.
 - Wynik newslettera jest zapisywany w `render_artifacts` jako format
   `newsletter`.
 - Newsletter nie jest wysylany automatycznie.
+
+## Wykonane w Etapie 6 - Budget Research Pipeline
+
+- Dodano `createBudgetResearchCollector`.
+- Dodano `createBudgetSignalAnalyzer`.
+- Produkcja domyslnie wybiera `budget`, lokalny development nadal wybiera
+  `fixture`, chyba ze env wymusi inaczej.
+- Budget collector pobiera dzienne dane cenowe z publicznego Stooq CSV dla
+  NDX/QQQ/VIX i koszyka liderow US100.
+- Budget collector opcjonalnie pobiera FRED 2Y/10Y/Fed Funds przez darmowy
+  `FRED_API_KEY`.
+- Budget collector opcjonalnie pobiera ograniczony Google News RSS albo wlasny
+  RSS URL.
+- Dodano twarde limity requestow: `US100_BUDGET_MAX_REQUESTS` i
+  `US100_BUDGET_REQUEST_TIMEOUT_MS`.
+- Domyslny model OpenAI w kodzie zmieniono na `gpt-5-mini`.
+- Nie dodano platnych feedow, real-time data, intraday ani profesjonalnego news
+  terminala.
 
 ## Ostatnia walidacja
 

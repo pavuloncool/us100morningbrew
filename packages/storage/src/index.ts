@@ -469,6 +469,35 @@ export function createSupabaseRestResearchRunRepository(
       if (!existingRows[0]) {
         throw new Error(`Could not claim or find research run ${input.idempotencyKey}.`);
       }
+      if (existingRows[0].status === "failed") {
+        const retryUrl = researchRunUrl(config.url, {
+          id: `eq.${existingRows[0].id}`,
+          select
+        });
+        const retryRows = await parseSupabaseResponse<SupabaseResearchRunRow[]>(
+          await fetcher(retryUrl, {
+            body: JSON.stringify({
+              completed_at: null,
+              error_message: null,
+              metrics: input.metrics ?? {},
+              started_at: new Date().toISOString(),
+              status: "running"
+            }),
+            headers: {
+              ...headers,
+              Prefer: "return=representation"
+            },
+            method: "PATCH"
+          })
+        );
+        if (!retryRows[0]) {
+          throw new Error(`Could not retry research run ${input.idempotencyKey}.`);
+        }
+        return {
+          acquired: true,
+          run: toStoredResearchRun(retryRows[0])
+        };
+      }
       return {
         acquired: false,
         run: toStoredResearchRun(existingRows[0])

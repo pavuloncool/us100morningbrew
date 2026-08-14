@@ -1,5 +1,7 @@
 import type { Locale, MorningBrew } from "@us100/contracts";
 import {
+  createBudgetResearchCollector,
+  createBudgetSignalAnalyzer,
   createFixtureAnalyzer,
   createFixtureCollector,
   createFixtureGenerator,
@@ -114,6 +116,15 @@ function createGeneratorFromEnv(env: AutomationEnv): BriefingGenerator {
   return createStructuredOutputGenerator(createOpenAIResponsesGenerationClientFromEnv(env));
 }
 
+function researchProviderFromEnv(env: AutomationEnv): "budget" | "fixture" {
+  const provider =
+    env.US100_RESEARCH_PROVIDER ?? (env.NODE_ENV === "production" ? "budget" : "fixture");
+  if (provider === "fixture" || provider === "budget") {
+    return provider;
+  }
+  throw new Error(`Unsupported US100_RESEARCH_PROVIDER: ${provider}.`);
+}
+
 function statusForBriefing(briefing: MorningBrew): "drafted" | "published" {
   return briefing.status === "published" ? "published" : "drafted";
 }
@@ -166,6 +177,7 @@ export async function runMorningBrewAutomation(
   const briefingRepository = getBriefingRepository();
   const researchRunRepository = getResearchRunRepository();
   const generator = createGeneratorFromEnv(env);
+  const researchProvider = researchProviderFromEnv(env);
   const localeResults: LocaleAutomationResult[] = [];
 
   for (const locale of locales) {
@@ -188,8 +200,10 @@ export async function runMorningBrewAutomation(
     }
 
     const pipeline = createMorningBrewPipeline({
-      analyzer: createFixtureAnalyzer(),
-      collector: createFixtureCollector(),
+      analyzer:
+        researchProvider === "budget" ? createBudgetSignalAnalyzer() : createFixtureAnalyzer(),
+      collector:
+        researchProvider === "budget" ? createBudgetResearchCollector({ env }) : createFixtureCollector(),
       generator,
       writer: briefingRepository
     });

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { getLatestBriefing } from "../src";
+import { createBudgetResearchCollector, createBudgetSignalAnalyzer } from "../src/budget-pipeline";
 import {
   createFixtureAnalyzer,
   createFixtureCollector,
@@ -144,5 +145,34 @@ describe("Morning Brew pipeline", () => {
         }
       }
     });
+  });
+
+  it("collects and analyzes budget research evidence without paid data providers", async () => {
+    const csv = [
+      "Date,Open,High,Low,Close,Volume",
+      ...Array.from({ length: 220 }, (_, index) => {
+        const day = String(index + 1).padStart(2, "0");
+        const close = 100 + index;
+        return `2026-01-${day.slice(-2)},${close - 1},${close + 1},${close - 2},${close},1000`;
+      })
+    ].join("\n");
+    const collector = createBudgetResearchCollector({
+      env: {
+        US100_BUDGET_NEWS_RSS_ENABLED: "false"
+      },
+      fetch: async () =>
+        new Response(csv, {
+          headers: { "Content-Type": "text/csv" },
+          status: 200
+        }),
+      maxRequests: 20
+    });
+    const evidencePack = await collector.collect(context);
+    const analysis = await createBudgetSignalAnalyzer().analyze(evidencePack, context);
+
+    expect(evidencePack.sources.some((source) => source.id === "stooq-ndx")).toBe(true);
+    expect(evidencePack.snapshots.length).toBeGreaterThan(1);
+    expect(analysis.signals).toHaveLength(5);
+    expect(analysis.summary).toContain("Budget pipeline");
   });
 });

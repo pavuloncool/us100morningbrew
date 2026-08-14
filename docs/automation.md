@@ -50,14 +50,18 @@ CRON_SECRET=<losowy sekret>
 US100_STORAGE_PROVIDER=supabase
 SUPABASE_URL=<project-url>
 SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
+US100_RESEARCH_PROVIDER=budget
 US100_GENERATION_PROVIDER=openai
 OPENAI_API_KEY=<openai-api-key>
-OPENAI_MODEL=gpt-5
+OPENAI_MODEL=gpt-5-mini
 US100_GENERATION_TARGET_STATUS=draft
 US100_CRON_LOCALES=pl,en
 US100_REVIEW_SECRET=<private-review-token>
 US100_REVIEW_EMAILS=<email-1,email-2>
 SUPABASE_ANON_KEY=<supabase-anon-key>
+US100_BUDGET_MAX_REQUESTS=30
+US100_BUDGET_NEWS_RSS_ENABLED=true
+FRED_API_KEY=<optional-free-fred-api-key>
 ```
 
 Rekomendacja produkcyjna: `US100_GENERATION_TARGET_STATUS=draft`.
@@ -118,6 +122,8 @@ curl \
 
 - Endpoint cron jest gotowy.
 - Idempotency jest gotowe na poziomie storage/research_runs.
+- Failed research runs moga byc ponowione po naprawie przyczyny bledu, bez
+  recznego czyszczenia bazy.
 - OpenAI Responses API adapter jest gotowy.
-- Prawdziwe collectory danych rynkowych/newsowych nie sa jeszcze podlaczone;
-  endpoint uzywa obecnie fixture collector/analyzer.
+- Budget Research Pipeline jest dostepny przez `US100_RESEARCH_PROVIDER=budget`.
+  Uzywa low-cost daily data i nie pobiera real-time market data.

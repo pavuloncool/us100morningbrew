@@ -280,7 +280,7 @@ export function createOpenAIResponsesGenerationClient(
 ): StructuredGenerationClient {
   const fetcher = config.fetch ?? fetch;
   const baseUrl = config.baseUrl ?? "https://api.openai.com";
-  const model = config.model ?? "gpt-5";
+  const model = config.model ?? "gpt-5-mini";
 
   return {
     async generateMorningBrew(request) {
@@ -327,6 +327,6 @@ export function createOpenAIResponsesGenerationClientFromEnv(
 
   return createOpenAIResponsesGenerationClient({
     apiKey,
-    model: env.OPENAI_MODEL ?? "gpt-5"
+    model: env.OPENAI_MODEL ?? "gpt-5-mini"
   });
 }

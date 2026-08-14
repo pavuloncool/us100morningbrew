@@ -321,6 +321,72 @@ describe("storage repository", () => {
     );
   });
 
+  it("retries a failed research run instead of treating it as a duplicate", async () => {
+    const requests: Array<{ body?: unknown; method: string; url: string }> = [];
+    const failedRun = {
+      completed_at: "2026-08-13T06:01:00.000Z",
+      created_at: "2026-08-13T06:00:00.000Z",
+      error_message: "insufficient_quota",
+      id: "run-1",
+      idempotency_key: "morning-brew:2026-08-13:pl",
+      language: "pl",
+      metrics: {},
+      run_date: "2026-08-13",
+      started_at: "2026-08-13T06:00:00.000Z",
+      status: "failed"
+    };
+    const repository = createSupabaseRestResearchRunRepository({
+      apiKey: "test-key",
+      url: "https://example.supabase.co",
+      fetch: async (input, init) => {
+        requests.push({
+          body: init?.body ? JSON.parse(String(init.body)) : undefined,
+          method: init?.method ?? "GET",
+          url: String(input)
+        });
+
+        if (init?.method === "POST") {
+          return new Response(JSON.stringify([]), {
+            headers: { "Content-Type": "application/json" },
+            status: 201
+          });
+        }
+
+        if (init?.method === "PATCH") {
+          return new Response(
+            JSON.stringify([
+              {
+                ...failedRun,
+                completed_at: null,
+                error_message: null,
+                status: "running"
+              }
+            ]),
+            {
+              headers: { "Content-Type": "application/json" },
+              status: 200
+            }
+          );
+        }
+
+        return new Response(JSON.stringify([failedRun]), {
+          headers: { "Content-Type": "application/json" },
+          status: 200
+        });
+      }
+    });
+
+    const claim = await repository.claimResearchRun({
+      idempotencyKey: "morning-brew:2026-08-13:pl",
+      locale: "pl",
+      runDate: "2026-08-13"
+    });
+
+    expect(claim.acquired).toBe(true);
+    expect(claim.run.status).toBe("running");
+    expect(requests.some((request) => request.method === "PATCH")).toBe(true);
+  });
+
   it("lists recent research runs", async () => {
     const requests: string[] = [];
     const repository = createSupabaseRestResearchRunRepository({
