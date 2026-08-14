@@ -146,8 +146,12 @@ export async function getBriefingRecordBySlug(
   return briefingRepository.getBriefingRecordBySlug(slug, locale, { status });
 }
 
-export async function publishBriefing(slug: string, locale: Locale): Promise<MorningBrew> {
-  return briefingRepository.publishBriefing(slug, locale);
+export async function publishBriefing(
+  slug: string,
+  locale: Locale,
+  publishedAt?: string
+): Promise<MorningBrew> {
+  return briefingRepository.publishBriefing(slug, locale, publishedAt);
 }
 
 export async function saveBriefing(briefing: MorningBrew): Promise<MorningBrew> {

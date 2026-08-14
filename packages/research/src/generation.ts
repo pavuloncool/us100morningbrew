@@ -1,3 +1,5 @@
+import { MorningBrewSchema, type Locale, type MorningBrew } from "@us100/contracts";
+
 import type { BriefingGenerator, GenerationInput } from "./pipeline";
 
 type FetchLike = (input: string | URL, init?: RequestInit) => Promise<Response>;
@@ -14,7 +16,7 @@ type OpenAIResponsesGenerationClientConfig = {
 };
 
 export type StructuredBriefingGenerationRequest = {
-  input: GenerationInput;
+  input: GenerationInput | TranslationInput;
   instructions: string;
   schemaName: "MorningBrewSchema";
   system: string;
@@ -22,6 +24,18 @@ export type StructuredBriefingGenerationRequest = {
 
 export type StructuredGenerationClient = {
   generateMorningBrew(request: StructuredBriefingGenerationRequest): Promise<unknown>;
+};
+
+export type TranslationInput = {
+  publishedAt?: string | null;
+  sourceBriefing: MorningBrew;
+  targetLocale: Locale;
+  targetSlug?: string;
+  targetStatus?: Extract<MorningBrew["status"], "draft" | "published">;
+};
+
+export type BriefingTranslator = {
+  translate(input: TranslationInput): Promise<MorningBrew>;
 };
 
 const signalImpactValues = [
@@ -212,12 +226,61 @@ export function buildGenerationRequest(
   };
 }
 
+export function buildTranslationRequest(
+  input: TranslationInput
+): StructuredBriefingGenerationRequest {
+  const publicationLanguage =
+    input.targetLocale === "pl" ? "Polish" : "English";
+
+  return {
+    input,
+    instructions: [
+      `Translate the source US100 Morning Brew briefing into ${publicationLanguage}.`,
+      "Return only structured data matching MorningBrewSchema; do not return markdown.",
+      "Preserve the market conclusion, causal reasoning, signal impacts, scorecard logic, dates, and source IDs.",
+      "Do not add new facts, new sources, new market claims, or independent analysis.",
+      "Translate all reader-facing text fields, including headline, deck, verdict, key signal, sections, scorecard, what changed, and levels to watch.",
+      "Copy sources from the source briefing exactly; sources are evidence metadata, not prose to rewrite.",
+      "Every sources[].observedAt value must be null or a full ISO datetime with timezone, never a date-only string."
+    ].join("\n"),
+    schemaName: "MorningBrewSchema",
+    system:
+      "You translate structured US100 / Nasdaq-100 market briefings for a deterministic publishing pipeline."
+  };
+}
+
+function normalizeTranslatedBriefing(rawBriefing: unknown, input: TranslationInput): MorningBrew {
+  const parsed = MorningBrewSchema.parse(rawBriefing);
+  const targetStatus = input.targetStatus ?? parsed.status;
+  return MorningBrewSchema.parse({
+    ...parsed,
+    date: input.sourceBriefing.date,
+    language: input.targetLocale,
+    publishedAt: targetStatus === "draft" ? null : input.publishedAt ?? parsed.publishedAt,
+    schemaVersion: input.sourceBriefing.schemaVersion,
+    slug: input.targetSlug ?? parsed.slug,
+    sources: input.sourceBriefing.sources,
+    status: targetStatus
+  });
+}
+
 export function createStructuredOutputGenerator(
   client: StructuredGenerationClient
 ): BriefingGenerator {
   return {
     async generate(input) {
       return client.generateMorningBrew(buildGenerationRequest(input));
+    }
+  };
+}
+
+export function createStructuredOutputTranslator(
+  client: StructuredGenerationClient
+): BriefingTranslator {
+  return {
+    async translate(input) {
+      const rawBriefing = await client.generateMorningBrew(buildTranslationRequest(input));
+      return normalizeTranslatedBriefing(rawBriefing, input);
     }
   };
 }

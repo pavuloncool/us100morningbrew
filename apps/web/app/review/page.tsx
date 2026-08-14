@@ -84,13 +84,17 @@ function formatRunDiagnostics(metrics: Record<string, unknown>): string | null {
   } else if (metrics.runSource === "vercel-cron") {
     parts.push("tryb: cron");
   }
+  if (metrics.translatedFromLocale === "pl") {
+    parts.push("EN z tłumaczenia PL");
+  }
 
   if (timings) {
+    const generationLabel = metrics.translatedFromLocale === "pl" ? "tłumaczenie" : "OpenAI";
     parts.push(
       ...[
         ["research", formatSeconds(timings.collect)],
         ["analiza", formatSeconds(timings.analyze)],
-        ["OpenAI", formatSeconds(timings.generate)],
+        [generationLabel, formatSeconds(timings.generate)],
         ["zapis", formatSeconds(timings.save)],
         ["razem", formatSeconds(timings.total)]
       ]
@@ -165,10 +169,22 @@ function rerunMessage(status: string | undefined): string | null {
   }
 }
 
+function translationMessage(status: string | undefined): string | null {
+  switch (status) {
+    case "completed":
+      return "Wersja EN została utworzona z opublikowanego PL i opublikowana równolegle.";
+    case "failed":
+      return "Nie udało się utworzyć wersji EN z opublikowanego PL. Sprawdź logi lub spróbuj ponownie.";
+    default:
+      return null;
+  }
+}
+
 export default async function ReviewPage({ searchParams }: ReviewPageProps) {
   const query = await searchParams;
   const token = firstSearchParam(query.token);
   const message = rerunMessage(firstSearchParam(query.rerun));
+  const translateMessage = translationMessage(firstSearchParam(query.translate));
   const cookieStore = await cookies();
   const session = cookieStore.get(reviewSessionCookieName)?.value;
 
@@ -197,6 +213,7 @@ export default async function ReviewPage({ searchParams }: ReviewPageProps) {
           status na published i staje się widoczny na stronie.
         </p>
         {message ? <p className="form-success">{message}</p> : null}
+        {translateMessage ? <p className="form-success">{translateMessage}</p> : null}
         <div className="review-actions review-actions-start">
           <form action="/api/review/rerun" method="post">
             {token ? <input name="token" type="hidden" value={token} /> : null}
@@ -214,10 +231,17 @@ export default async function ReviewPage({ searchParams }: ReviewPageProps) {
               Pełny research PL
             </button>
           </form>
+          <form action="/api/review/backfill-en" method="post">
+            {token ? <input name="token" type="hidden" value={token} /> : null}
+            <button className="button-secondary" type="submit">
+              Utwórz EN z opublikowanego PL
+            </button>
+          </form>
         </div>
         <p className="review-actions-note">
           Szybki test ogranicza źródła, żeby sprawdzić sam przepływ. Pełny research PL używa
           pełnego modelu źródeł budget pipeline: ceny, FRED i RSS/news, jeśli są skonfigurowane.
+          EN z opublikowanego PL tłumaczy zatwierdzoną publikację bez ponownego researchu.
         </p>
       </section>
 

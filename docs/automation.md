@@ -85,6 +85,13 @@ tak, zeby funkcja zdazyla zapisac wynik albo blad przed timeoutem Vercel.
 Budget collector pobiera zrodla rownolegle, zeby wiele wolnych odpowiedzi z
 zewnetrznych serwisow nie blokowalo calego uruchomienia sekwencyjnie.
 
+W porannym cyklu produkcyjnym model jezykowy jest parowany: PL powstaje jako
+wersja bazowa z evidence packa, a EN jako tlumaczenie tej samej struktury,
+wnioskow i zrodel. Dzieki temu EN nie jest drugim niezaleznym researchem z
+potencjalnie innymi wnioskami. Jesli trzeba awaryjnie uzupelnic brakujaca
+wersje EN dla juz opublikowanego PL, w `/review` sluzy do tego akcja
+`Utworz EN z opublikowanego PL`.
+
 Opcjonalne limity dla pelnego recznego researchu PL w `/review`:
 
 ```bash
@@ -102,7 +109,9 @@ Pelny reczny research uzywa tego samego modelu zrodel co budget cron:
 Stooq/FRED/RSS zgodnie z konfiguracja env. Zapisuje osobny draft ze slugiem
 `full-research-test`, zeby nie nadpisac juz opublikowanego briefingu dnia.
 Domyslnie wymaga minimum 8 zrodel; jesli zewnetrzne serwisy zwroca mniej,
-run konczy sie bledem jakosci zamiast zapisywac zbyt ubogi draft.
+run konczy sie bledem jakosci zamiast zapisywac zbyt ubogi draft. Nie ma
+osobnego przycisku pelnego researchu EN; wersja EN powstaje przez tlumaczenie
+zatwierdzonej struktury PL.
 
 ## Approval
 

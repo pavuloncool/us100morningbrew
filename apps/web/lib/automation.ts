@@ -13,6 +13,12 @@ import {
 } from "@us100/research";
 
 import {
+  canonicalDailySlug,
+  createBriefingTranslatorFromEnv,
+  translationDraftSlug,
+  translateBriefing
+} from "./briefing-translation";
+import {
   appLocales,
   getBriefingRepository,
   getResearchRunRepository,
@@ -133,6 +139,14 @@ function statusForBriefing(briefing: MorningBrew): "drafted" | "published" {
   return briefing.status === "published" ? "published" : "drafted";
 }
 
+function shouldTranslateEnglishFromPolish(locales: AppLocale[], env: AutomationEnv): boolean {
+  return (
+    env.US100_EN_FROM_PL_TRANSLATION !== "false" &&
+    locales.includes("pl") &&
+    locales.includes("en")
+  );
+}
+
 function sourceBreakdown(sources: Array<{ id: string }>): Record<string, number> {
   return sources.reduce<Record<string, number>>(
     (breakdown, source) => {
@@ -220,8 +234,13 @@ export async function runMorningBrewAutomation(
   const generator = createGeneratorFromEnv(env);
   const researchProvider = researchProviderFromEnv(env);
   const localeResults: LocaleAutomationResult[] = [];
+  const translateEnglishFromPolish = shouldTranslateEnglishFromPolish(locales, env);
+  const pipelineLocales = translateEnglishFromPolish
+    ? locales.filter((locale) => locale !== "en")
+    : locales;
+  let polishSourceBriefing: MorningBrew | null = null;
 
-  for (const locale of locales) {
+  for (const locale of pipelineLocales) {
     const idempotencyKey = options.idempotencyScope
       ? `morning-brew:${date}:${locale}:${options.idempotencyScope}`
       : `morning-brew:${date}:${locale}`;
@@ -261,6 +280,9 @@ export async function runMorningBrewAutomation(
     });
 
     if (result.status === "succeeded") {
+      if (locale === "pl") {
+        polishSourceBriefing = result.savedBriefing ?? result.briefing;
+      }
       await researchRunRepository.completeResearchRun(claim.run.id, {
         metrics: {
           evidenceSnapshots: result.evidencePack.snapshots.length,
@@ -306,7 +328,107 @@ export async function runMorningBrewAutomation(
       result,
       runId: claim.run.id,
       status: "failed"
+      });
+  }
+
+  if (translateEnglishFromPolish) {
+    const locale = "en" satisfies AppLocale;
+    const idempotencyKey = options.idempotencyScope
+      ? `morning-brew:${date}:${locale}:${options.idempotencyScope}`
+      : `morning-brew:${date}:${locale}`;
+    const claim = await researchRunRepository.claimResearchRun({
+      idempotencyKey,
+      locale,
+      metrics: {
+        source: runSource,
+        translatedFromLocale: "pl"
+      },
+      runDate: date
     });
+
+    if (!claim.acquired) {
+      localeResults.push({
+        idempotencyKey,
+        locale,
+        runId: claim.run.id,
+        status: "skipped_duplicate"
+      });
+    } else if (!polishSourceBriefing) {
+      await researchRunRepository.completeResearchRun(claim.run.id, {
+        errorMessage: "EN translation skipped because the PL source briefing was not generated.",
+        metrics: {
+          idempotencyScope: options.idempotencyScope ?? "cron",
+          runSource,
+          translatedFromLocale: "pl"
+        },
+        status: "failed"
+      });
+      localeResults.push({
+        idempotencyKey,
+        locale,
+        runId: claim.run.id,
+        status: "failed"
+      });
+    } else {
+      const runStartedAtMs = Date.now();
+      const timingsMs: Record<string, number> = {};
+      try {
+        const translateStartedAtMs = Date.now();
+        const translatedBriefing = await translateBriefing(polishSourceBriefing, "en", {
+          env,
+          slug: options.slugSuffix
+            ? `${translationDraftSlug(date, "en")}-${options.slugSuffix}`
+            : canonicalDailySlug(date),
+          status: targetStatusFromEnv(env),
+          translator: createBriefingTranslatorFromEnv(env)
+        });
+        timingsMs.generate = Date.now() - translateStartedAtMs;
+        const saveStartedAtMs = Date.now();
+        const savedBriefing = await briefingRepository.saveBriefing(translatedBriefing);
+        timingsMs.save = Date.now() - saveStartedAtMs;
+        timingsMs.total = Date.now() - runStartedAtMs;
+        await researchRunRepository.completeResearchRun(claim.run.id, {
+          metrics: {
+            evidenceSources: savedBriefing.sources.length,
+            idempotencyScope: options.idempotencyScope ?? "cron",
+            runSource,
+            slug: savedBriefing.slug,
+            sourceBreakdown: sourceBreakdown(savedBriefing.sources),
+            status: savedBriefing.status,
+            timingsMs,
+            translatedFromLocale: "pl",
+            translatedFromSlug: polishSourceBriefing.slug
+          },
+          status: statusForBriefing(savedBriefing)
+        });
+        localeResults.push({
+          idempotencyKey,
+          locale,
+          runId: claim.run.id,
+          status: "completed"
+        });
+      } catch (error) {
+        timingsMs.total = Date.now() - runStartedAtMs;
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        await researchRunRepository.completeResearchRun(claim.run.id, {
+          errorMessage,
+          metrics: {
+            idempotencyScope: options.idempotencyScope ?? "cron",
+            runSource,
+            timingsMs,
+            translatedFromLocale: "pl",
+            translatedFromSlug: polishSourceBriefing.slug
+          },
+          status: "failed"
+        });
+        localeResults.push({
+          idempotencyKey,
+          locale,
+          runId: claim.run.id,
+          status: "failed"
+        });
+      }
+    }
   }
 
   return {

@@ -10,6 +10,7 @@ import {
 } from "../src/fixture-pipeline";
 import { createStructuredOutputGenerator } from "../src/generation";
 import { createOpenAIResponsesGenerationClient } from "../src/generation";
+import { createStructuredOutputTranslator } from "../src/generation";
 import { createMorningBrewPipeline } from "../src/pipeline";
 
 const context = {
@@ -91,6 +92,48 @@ describe("Morning Brew pipeline", () => {
 
     const result = await pipeline.run(context);
     expect(result.status).toBe("succeeded");
+  });
+
+  it("translates a briefing through strict structured output while preserving source metadata", async () => {
+    const sourceBriefing = getLatestBriefing("pl");
+    const englishFixture = getLatestBriefing("en");
+    const translator = createStructuredOutputTranslator({
+      async generateMorningBrew(request) {
+        expect(request.schemaName).toBe("MorningBrewSchema");
+        expect(request.instructions).toContain("Do not add new facts");
+        return {
+          ...englishFixture,
+          date: "2099-01-01",
+          language: "pl",
+          publishedAt: "2099-01-01T00:00:00.000Z",
+          slug: "wrong-slug",
+          sources: [
+            {
+              id: "wrong-source",
+              observedAt: "2099-01-01T00:00:00.000Z",
+              publisher: "Wrong",
+              title: "Wrong source",
+              url: "https://example.com/wrong"
+            }
+          ],
+          status: "published"
+        };
+      }
+    });
+
+    const translated = await translator.translate({
+      sourceBriefing,
+      targetLocale: "en",
+      targetSlug: "2026-08-13-us100-morning-brew",
+      targetStatus: "draft"
+    });
+
+    expect(translated.date).toBe(sourceBriefing.date);
+    expect(translated.language).toBe("en");
+    expect(translated.publishedAt).toBeNull();
+    expect(translated.slug).toBe("2026-08-13-us100-morning-brew");
+    expect(translated.sources).toEqual(sourceBriefing.sources);
+    expect(translated.status).toBe("draft");
   });
 
   it("normalizes date-only source timestamps from the evidence pack", async () => {
