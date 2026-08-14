@@ -138,11 +138,43 @@ function createRunId(context: ResearchRunContext): string {
   return context.runId ?? `${context.date}:${context.locale}:${isoNow(context)}`;
 }
 
+function normalizeObservedAt(value: unknown): unknown {
+  if (typeof value !== "string") {
+    return value;
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return `${value}T12:00:00.000Z`;
+  }
+  return value;
+}
+
+function normalizeSourceDates(rawBriefing: unknown): unknown {
+  if (typeof rawBriefing !== "object" || rawBriefing === null || !("sources" in rawBriefing)) {
+    return rawBriefing;
+  }
+  const sources = (rawBriefing as { sources?: unknown }).sources;
+  if (!Array.isArray(sources)) {
+    return rawBriefing;
+  }
+  return {
+    ...rawBriefing,
+    sources: sources.map((source) => {
+      if (typeof source !== "object" || source === null || !("observedAt" in source)) {
+        return source;
+      }
+      return {
+        ...source,
+        observedAt: normalizeObservedAt((source as { observedAt?: unknown }).observedAt)
+      };
+    })
+  };
+}
+
 function normalizeGeneratedBriefing(
   rawBriefing: unknown,
   context: ResearchRunContext
 ): MorningBrew {
-  const parsed = MorningBrewSchema.parse(rawBriefing);
+  const parsed = MorningBrewSchema.parse(normalizeSourceDates(rawBriefing));
 
   if (!context.targetStatus) {
     return parsed;

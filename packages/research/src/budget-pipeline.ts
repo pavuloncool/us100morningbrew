@@ -223,10 +223,18 @@ function parseRssItems(xml: string, limit: number): SourceDocument[] {
   return documents;
 }
 
+function sourceObservedAt(value: string): string {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return `${value}T12:00:00.000Z`;
+  }
+  const parsed = new Date(value);
+  return Number.isFinite(parsed.getTime()) ? parsed.toISOString() : new Date().toISOString();
+}
+
 function sourceDocument(id: string, title: string, url: string, observedAt: string): SourceDocument {
   return {
     id,
-    observedAt,
+    observedAt: sourceObservedAt(observedAt),
     publisher: "US100 Budget Research",
     title,
     url

@@ -93,6 +93,33 @@ describe("Morning Brew pipeline", () => {
     expect(result.status).toBe("succeeded");
   });
 
+  it("normalizes date-only source timestamps returned by the generator", async () => {
+    const briefing = getLatestBriefing("pl");
+    const pipeline = createMorningBrewPipeline({
+      analyzer: createFixtureAnalyzer(),
+      collector: createFixtureCollector(),
+      generator: {
+        async generate() {
+          return {
+            ...briefing,
+            date: context.date,
+            sources: briefing.sources.map((source) => ({
+              ...source,
+              observedAt: "2026-08-13"
+            }))
+          };
+        }
+      }
+    });
+
+    const result = await pipeline.run(context);
+    expect(result.status).toBe("succeeded");
+    if (result.status !== "succeeded") {
+      throw new Error(result.error);
+    }
+    expect(result.briefing.sources[0]?.observedAt).toBe("2026-08-13T12:00:00.000Z");
+  });
+
   it("calls OpenAI Responses API with strict JSON schema output", async () => {
     const briefing = getLatestBriefing("pl");
     const requests: Array<{ body: unknown; url: string }> = [];

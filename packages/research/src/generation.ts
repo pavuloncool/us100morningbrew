@@ -203,7 +203,8 @@ export function buildGenerationRequest(
       "Actively falsify the medium-term US100 short thesis instead of only confirming it.",
       "For every material signal, explain why it matters using causal market reasoning.",
       "Choose one most important signal of the day and explain why it matters for US100.",
-      "Preserve source IDs from the evidence pack whenever evidence is referenced."
+      "Preserve source IDs from the evidence pack whenever evidence is referenced.",
+      "Every sources[].observedAt value must be null or a full ISO datetime with timezone, never a date-only string."
     ].join("\n"),
     schemaName: "MorningBrewSchema",
     system:
