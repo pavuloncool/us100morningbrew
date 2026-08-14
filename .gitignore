@@ -6,6 +6,7 @@ node_modules/
 dist/
 coverage/
 .db-backups/
+backups/
 .env
 .env.*
 !.env.example
