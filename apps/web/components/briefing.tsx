@@ -8,6 +8,7 @@ import {
   type AppLocale,
   watchItemKey
 } from "@/lib/briefings";
+import { ProductInfoPanel } from "@/components/product-info-panel";
 import { SignalDashboard, type SignalDashboardItem } from "@/components/signal-dashboard";
 
 type BriefingViewProps = {
@@ -68,6 +69,8 @@ export function BriefingView({ briefing }: BriefingViewProps) {
           </span>
         </aside>
       </section>
+
+      <ProductInfoPanel locale={locale} />
 
       <section className="key-signal" aria-labelledby="key-signal-title">
         <p className="eyebrow">{copy.keySignal}</p>

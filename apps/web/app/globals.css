@@ -173,6 +173,47 @@ select {
   padding-left: var(--space-6);
 }
 
+.product-info-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-6);
+  padding-right: calc(var(--space-6) + 44px);
+  position: relative;
+}
+
+.product-info-panel p:not(.eyebrow) {
+  color: var(--muted);
+  max-width: 980px;
+}
+
+.product-info-panel__close {
+  align-items: center;
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 24px;
+  font-weight: 700;
+  height: 36px;
+  justify-content: center;
+  line-height: 1;
+  position: absolute;
+  right: var(--space-4);
+  top: var(--space-4);
+  width: 36px;
+}
+
+.product-info-panel__close:hover {
+  background: var(--foreground);
+  border-color: var(--foreground);
+  color: var(--surface);
+}
+
 .stat {
   display: grid;
   gap: var(--space-1);
@@ -829,6 +870,11 @@ select {
     border-top: 1px solid var(--border);
     padding-left: 0;
     padding-top: var(--space-6);
+  }
+
+  .product-info-panel {
+    padding: var(--space-5);
+    padding-right: calc(var(--space-5) + 40px);
   }
 
   .hero-copy h1 {
