@@ -14,15 +14,15 @@ export const metadata: Metadata = {
   description:
     "Codzienny, strukturalny briefing US100 / Nasdaq-100 badający price action, breadth, AI, rates, Fed i volatility.",
   icons: {
-    apple: "/us100morningbrew-logo-trans.png",
-    icon: "/us100morningbrew-logo-trans.png"
+    apple: "/us100morningbrew-logo.webp",
+    icon: "/us100morningbrew-logo.webp"
   },
   openGraph: {
     images: [
       {
         alt: "US100 Morning Brew logo",
         height: 1254,
-        url: "/us100morningbrew-logo-trans.png",
+        url: "/us100morningbrew-logo.webp",
         width: 1254
       }
     ],

@@ -26,7 +26,7 @@ export function SiteHeader() {
           className="brand-logo"
           height={40}
           priority
-          src="/us100morningbrew-logo-trans.png"
+          src="/us100morningbrew-logo.webp"
           width={40}
         />
         <span>US100 Morning Brew</span>
