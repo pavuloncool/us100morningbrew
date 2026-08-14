@@ -385,6 +385,11 @@ select {
   font-weight: 700;
 }
 
+.form-success {
+  color: #3f815c;
+  font-weight: 700;
+}
+
 .review-bar {
   align-items: center;
   display: grid;
@@ -406,6 +411,10 @@ select {
   flex-wrap: wrap;
   gap: var(--space-3);
   justify-content: flex-end;
+}
+
+.review-actions-start {
+  justify-content: flex-start;
 }
 
 .button-primary,

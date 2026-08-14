@@ -49,9 +49,23 @@ function formatRunTime(value: string | null): string {
   }).format(new Date(value));
 }
 
+function rerunMessage(status: string | undefined): string | null {
+  switch (status) {
+    case "completed":
+      return "Ponowne uruchomienie zakończone. Sprawdź sekcję Drafty oraz Ostatnie uruchomienia.";
+    case "failed":
+      return "Ponowne uruchomienie zakończyło się błędem. Szczegóły są w sekcji Ostatnie uruchomienia.";
+    case "skipped":
+      return "Ponowne uruchomienie zostało pominięte.";
+    default:
+      return null;
+  }
+}
+
 export default async function ReviewPage({ searchParams }: ReviewPageProps) {
   const query = await searchParams;
   const token = firstSearchParam(query.token);
+  const message = rerunMessage(firstSearchParam(query.rerun));
   const cookieStore = await cookies();
   const session = cookieStore.get(reviewSessionCookieName)?.value;
 
@@ -79,6 +93,23 @@ export default async function ReviewPage({ searchParams }: ReviewPageProps) {
           Cron zapisuje nowe Morning Brews jako drafty. Dopiero po akceptacji rekord zmienia
           status na published i staje się widoczny na stronie.
         </p>
+        {message ? <p className="form-success">{message}</p> : null}
+        <div className="review-actions review-actions-start">
+          <form action="/api/review/rerun" method="post">
+            {token ? <input name="token" type="hidden" value={token} /> : null}
+            <input name="locales" type="hidden" value="pl" />
+            <button className="button-primary" type="submit">
+              Uruchom dzisiejszy briefing PL
+            </button>
+          </form>
+          <form action="/api/review/rerun" method="post">
+            {token ? <input name="token" type="hidden" value={token} /> : null}
+            <input name="locales" type="hidden" value="pl,en" />
+            <button className="button-secondary" type="submit">
+              Uruchom PL + EN
+            </button>
+          </form>
+        </div>
       </section>
 
       <section className="review-panel">
