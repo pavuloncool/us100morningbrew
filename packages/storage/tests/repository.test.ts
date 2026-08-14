@@ -320,4 +320,42 @@ describe("storage repository", () => {
       true
     );
   });
+
+  it("lists recent research runs", async () => {
+    const requests: string[] = [];
+    const repository = createSupabaseRestResearchRunRepository({
+      apiKey: "test-key",
+      url: "https://example.supabase.co",
+      fetch: async (input) => {
+        requests.push(String(input));
+        return new Response(
+          JSON.stringify([
+            {
+              completed_at: "2026-08-13T06:02:00.000Z",
+              created_at: "2026-08-13T06:00:00.000Z",
+              error_message: null,
+              id: "run-1",
+              idempotency_key: "morning-brew:2026-08-13:pl",
+              language: "pl",
+              metrics: { slug: "2026-08-13-us100-morning-brew" },
+              run_date: "2026-08-13",
+              started_at: "2026-08-13T06:00:00.000Z",
+              status: "drafted"
+            }
+          ]),
+          {
+            headers: { "Content-Type": "application/json" },
+            status: 200
+          }
+        );
+      }
+    });
+
+    const runs = await repository.listResearchRuns({ limit: 5 });
+
+    expect(runs).toHaveLength(1);
+    expect(runs[0]?.status).toBe("drafted");
+    expect(requests[0]).toContain("limit=5");
+    expect(requests[0]).toContain("order=run_date.desc");
+  });
 });

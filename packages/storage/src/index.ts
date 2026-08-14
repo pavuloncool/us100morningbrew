@@ -101,6 +101,10 @@ export type CompleteResearchRunInput = {
   status: Extract<ResearchRunStatus, "failed" | "drafted" | "published">;
 };
 
+export type ResearchRunListOptions = {
+  limit?: number;
+};
+
 export type ResearchRunClaim = {
   acquired: boolean;
   run: StoredResearchRun;
@@ -109,6 +113,7 @@ export type ResearchRunClaim = {
 export type ResearchRunRepository = {
   claimResearchRun(input: ClaimResearchRunInput): Promise<ResearchRunClaim>;
   completeResearchRun(id: string, input: CompleteResearchRunInput): Promise<StoredResearchRun>;
+  listResearchRuns(options?: ResearchRunListOptions): Promise<StoredResearchRun[]>;
 };
 
 type SupabaseWritableBriefingRow = {
@@ -420,6 +425,8 @@ export function createSupabaseRestResearchRunRepository(
 ): ResearchRunRepository {
   const fetcher = config.fetch ?? fetch;
   const headers = supabaseHeaders(config.apiKey);
+  const select =
+    "id,idempotency_key,run_date,language,status,started_at,completed_at,error_message,metrics,created_at";
 
   return {
     async claimResearchRun(input) {
@@ -432,8 +439,7 @@ export function createSupabaseRestResearchRunRepository(
       };
       const insertUrl = researchRunUrl(config.url, {
         on_conflict: "idempotency_key",
-        select:
-          "id,idempotency_key,run_date,language,status,started_at,completed_at,error_message,metrics,created_at"
+        select
       });
       const insertedRows = await parseSupabaseResponse<SupabaseResearchRunRow[]>(
         await fetcher(insertUrl, {
@@ -455,8 +461,7 @@ export function createSupabaseRestResearchRunRepository(
       const existingUrl = researchRunUrl(config.url, {
         idempotency_key: `eq.${input.idempotencyKey}`,
         limit: 1,
-        select:
-          "id,idempotency_key,run_date,language,status,started_at,completed_at,error_message,metrics,created_at"
+        select
       });
       const existingRows = await parseSupabaseResponse<SupabaseResearchRunRow[]>(
         await fetcher(existingUrl, { headers })
@@ -473,8 +478,7 @@ export function createSupabaseRestResearchRunRepository(
     async completeResearchRun(id, input) {
       const url = researchRunUrl(config.url, {
         id: `eq.${id}`,
-        select:
-          "id,idempotency_key,run_date,language,status,started_at,completed_at,error_message,metrics,created_at"
+        select
       });
       const rows = await parseSupabaseResponse<SupabaseResearchRunRow[]>(
         await fetcher(url, {
@@ -495,6 +499,18 @@ export function createSupabaseRestResearchRunRepository(
         throw new Error(`Research run ${id} was not found.`);
       }
       return toStoredResearchRun(rows[0]);
+    },
+
+    async listResearchRuns(options = {}) {
+      const url = researchRunUrl(config.url, {
+        limit: options.limit ?? 20,
+        order: "run_date.desc,created_at.desc",
+        select
+      });
+      const rows = await parseSupabaseResponse<SupabaseResearchRunRow[]>(
+        await fetcher(url, { headers })
+      );
+      return rows.map(toStoredResearchRun);
     }
   };
 }
@@ -533,6 +549,9 @@ export function createNoopResearchRunRepository(): ResearchRunRepository {
         startedAt: now,
         status: input.status
       };
+    },
+    async listResearchRuns() {
+      return [];
     }
   };
 }

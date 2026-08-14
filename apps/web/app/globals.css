@@ -305,6 +305,55 @@ select {
   font-size: 18px;
 }
 
+.review-run-list {
+  display: grid;
+  gap: var(--space-3);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.review-run-list li {
+  align-items: start;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: var(--space-4);
+}
+
+.review-run-list div {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.review-run-list span:not(.tone) {
+  color: var(--muted);
+}
+
+.review-run-list p {
+  grid-column: 1 / -1;
+  overflow-wrap: anywhere;
+}
+
+.tone[data-run-status="drafted"],
+.tone[data-run-status="published"] {
+  background: #e7efe8;
+  color: #3f815c;
+}
+
+.tone[data-run-status="failed"] {
+  background: #f3e6e2;
+  color: #b1463f;
+}
+
+.tone[data-run-status="running"],
+.tone[data-run-status="queued"] {
+  background: #eef0f1;
+  color: #657174;
+}
+
 .review-form-panel {
   margin: 0 auto;
   max-width: 560px;

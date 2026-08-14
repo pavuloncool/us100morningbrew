@@ -1,7 +1,13 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { listBriefingRecords, appLocales, formatDate, impactLabel } from "@/lib/briefings";
+import {
+  listBriefingRecords,
+  appLocales,
+  formatDate,
+  impactLabel,
+  listResearchRuns
+} from "@/lib/briefings";
 import {
   firstSearchParam,
   hasReviewAccess,
@@ -13,6 +19,35 @@ type ReviewPageProps = {
 };
 
 export const dynamic = "force-dynamic";
+
+function runStatusLabel(status: string): string {
+  switch (status) {
+    case "drafted":
+      return "Draft zapisany";
+    case "failed":
+      return "Błąd";
+    case "published":
+      return "Opublikowany";
+    case "running":
+      return "W toku";
+    case "queued":
+      return "W kolejce";
+    default:
+      return status;
+  }
+}
+
+function formatRunTime(value: string | null): string {
+  if (!value) {
+    return "Brak czasu zakończenia";
+  }
+
+  return new Intl.DateTimeFormat("pl-PL", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Europe/Warsaw"
+  }).format(new Date(value));
+}
 
 export default async function ReviewPage({ searchParams }: ReviewPageProps) {
   const query = await searchParams;
@@ -33,6 +68,7 @@ export default async function ReviewPage({ searchParams }: ReviewPageProps) {
   const allDrafts = draftsByLocale.flatMap(({ drafts, locale }) =>
     drafts.map((record) => ({ ...record, locale }))
   );
+  const recentRuns = await listResearchRuns(10);
 
   return (
     <main className="page">
@@ -68,6 +104,32 @@ export default async function ReviewPage({ searchParams }: ReviewPageProps) {
                     {impactLabel(record.briefing.verdict.stance, record.locale)}
                   </span>
                 </a>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+      <section className="review-panel">
+        <h2>Ostatnie uruchomienia</h2>
+        {recentRuns.length === 0 ? (
+          <p>
+            Brak zapisanej historii uruchomień. Jeśli cron faktycznie próbował dziś działać, to
+            zatrzymał się przed wejściem do pipeline albo nie został uruchomiony przez Vercel.
+          </p>
+        ) : (
+          <ul className="review-run-list">
+            {recentRuns.map((run) => (
+              <li key={run.id}>
+                <div>
+                  <strong>
+                    {formatDate(run.runDate, run.language)} / {run.language.toUpperCase()}
+                  </strong>
+                  <span>{formatRunTime(run.completedAt ?? run.startedAt)}</span>
+                </div>
+                <span className="tone" data-run-status={run.status}>
+                  {runStatusLabel(run.status)}
+                </span>
+                {run.errorMessage ? <p>{run.errorMessage}</p> : null}
               </li>
             ))}
           </ul>

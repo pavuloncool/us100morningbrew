@@ -19,6 +19,7 @@ import {
   type ResearchRunRepository,
   type SaveRenderArtifactInput,
   type StoredBriefingRecord,
+  type StoredResearchRun,
   type StoredRenderArtifact
 } from "@us100/storage";
 
@@ -109,6 +110,10 @@ export function getBriefingRepository(): BriefingRepository {
 
 export function getResearchRunRepository(): ResearchRunRepository {
   return researchRunRepository;
+}
+
+export async function listResearchRuns(limit = 20): Promise<StoredResearchRun[]> {
+  return researchRunRepository.listResearchRuns({ limit });
 }
 
 export async function listBriefings(locale: Locale): Promise<MorningBrew[]> {
