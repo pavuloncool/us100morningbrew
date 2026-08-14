@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -19,7 +20,16 @@ export function SiteHeader() {
   return (
     <header className="site-header">
       <Link className="brand" href={`/${locale}`}>
-        US100 Morning Brew
+        <Image
+          alt=""
+          aria-hidden="true"
+          className="brand-logo"
+          height={40}
+          priority
+          src="/us100morningbrew-logo-trans.png"
+          width={40}
+        />
+        <span>US100 Morning Brew</span>
       </Link>
       <nav aria-label={copy.mainNavigation}>
         <Link href={`/${locale}`}>{copy.latest}</Link>
@@ -29,4 +39,3 @@ export function SiteHeader() {
     </header>
   );
 }
-

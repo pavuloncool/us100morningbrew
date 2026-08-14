@@ -79,8 +79,23 @@ select {
 }
 
 .brand {
+  align-items: center;
+  display: inline-flex;
+  gap: var(--space-2);
   font-weight: 700;
+  min-height: 44px;
   text-decoration: none;
+}
+
+.brand-logo {
+  display: block;
+  flex: 0 0 auto;
+  height: 40px;
+  width: 40px;
+}
+
+.brand span {
+  white-space: nowrap;
 }
 
 .language-switch {
