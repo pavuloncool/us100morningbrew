@@ -170,11 +170,24 @@ function normalizeSourceDates(rawBriefing: unknown): unknown {
   };
 }
 
+function withCanonicalSources(rawBriefing: unknown, sources: SourceDocument[]): unknown {
+  if (sources.length === 0 || typeof rawBriefing !== "object" || rawBriefing === null) {
+    return rawBriefing;
+  }
+  return {
+    ...rawBriefing,
+    sources
+  };
+}
+
 function normalizeGeneratedBriefing(
   rawBriefing: unknown,
-  context: ResearchRunContext
+  context: ResearchRunContext,
+  canonicalSources: SourceDocument[]
 ): MorningBrew {
-  const parsed = MorningBrewSchema.parse(normalizeSourceDates(rawBriefing));
+  const parsed = MorningBrewSchema.parse(
+    normalizeSourceDates(withCanonicalSources(rawBriefing, canonicalSources))
+  );
 
   if (!context.targetStatus) {
     return parsed;
@@ -277,6 +290,17 @@ export const defaultQualityGates: QualityGate[] = [
           severity: "error"
         });
       }
+      const briefingSourceIds = new Set(briefing.sources.map((source) => source.id));
+      const missingSourceIds = input.evidencePack.sources
+        .map((source) => source.id)
+        .filter((sourceId) => !briefingSourceIds.has(sourceId));
+      if (missingSourceIds.length > 0) {
+        issues.push({
+          gateId: "evidence_and_sources",
+          message: `Briefing omitted evidence pack sources: ${missingSourceIds.join(", ")}.`,
+          severity: "error"
+        });
+      }
       if (briefing.keySignal.evidence.length === 0) {
         issues.push({
           gateId: "evidence_and_sources",
@@ -343,7 +367,7 @@ export function createMorningBrewPipeline(
         const rawBriefing = await config.generator.generate(generationInput);
         timingsMs.generate = Date.now() - generateStartedAtMs;
         const validateStartedAtMs = Date.now();
-        const briefing = normalizeGeneratedBriefing(rawBriefing, parsedContext);
+        const briefing = normalizeGeneratedBriefing(rawBriefing, parsedContext, evidencePack.sources);
         const quality = runQualityGates(briefing, generationInput, qualityGates);
         timingsMs.validate = Date.now() - validateStartedAtMs;
 

@@ -93,20 +93,40 @@ describe("Morning Brew pipeline", () => {
     expect(result.status).toBe("succeeded");
   });
 
-  it("normalizes date-only source timestamps returned by the generator", async () => {
+  it("normalizes date-only source timestamps from the evidence pack", async () => {
     const briefing = getLatestBriefing("pl");
     const pipeline = createMorningBrewPipeline({
       analyzer: createFixtureAnalyzer(),
-      collector: createFixtureCollector(),
+      collector: {
+        async collect() {
+          return {
+            date: context.date,
+            collectedAt: "2026-08-13T06:00:00.000Z",
+            locale: context.locale,
+            snapshots: [
+              {
+                capturedAt: "2026-08-13T06:00:00.000Z",
+                payload: { value: "test" },
+                source: "source-a"
+              }
+            ],
+            sources: [
+              {
+                id: "source-a",
+                observedAt: "2026-08-13",
+                publisher: "Test publisher",
+                title: "Source A",
+                url: "https://example.com/source-a"
+              }
+            ]
+          };
+        }
+      },
       generator: {
         async generate() {
           return {
             ...briefing,
-            date: context.date,
-            sources: briefing.sources.map((source) => ({
-              ...source,
-              observedAt: "2026-08-13"
-            }))
+            date: context.date
           };
         }
       }
@@ -118,6 +138,62 @@ describe("Morning Brew pipeline", () => {
       throw new Error(result.error);
     }
     expect(result.briefing.sources[0]?.observedAt).toBe("2026-08-13T12:00:00.000Z");
+  });
+
+  it("preserves the full evidence pack source list in the final briefing", async () => {
+    const briefing = getLatestBriefing("pl");
+    const evidenceSources = [
+      {
+        id: "source-a",
+        observedAt: "2026-08-13T06:00:00.000Z",
+        publisher: "Test publisher",
+        title: "Source A",
+        url: "https://example.com/source-a"
+      },
+      {
+        id: "source-b",
+        observedAt: "2026-08-13T06:01:00.000Z",
+        publisher: "Test publisher",
+        title: "Source B",
+        url: "https://example.com/source-b"
+      }
+    ];
+    const pipeline = createMorningBrewPipeline({
+      analyzer: createFixtureAnalyzer(),
+      collector: {
+        async collect() {
+          return {
+            collectedAt: "2026-08-13T06:00:00.000Z",
+            date: context.date,
+            locale: context.locale,
+            snapshots: [
+              {
+                capturedAt: "2026-08-13T06:00:00.000Z",
+                payload: { value: "test" },
+                source: "source-a"
+              }
+            ],
+            sources: evidenceSources
+          };
+        }
+      },
+      generator: {
+        async generate() {
+          return {
+            ...briefing,
+            date: context.date,
+            sources: [briefing.sources[0]]
+          };
+        }
+      }
+    });
+
+    const result = await pipeline.run(context);
+    expect(result.status).toBe("succeeded");
+    if (result.status !== "succeeded") {
+      throw new Error(result.error);
+    }
+    expect(result.briefing.sources.map((source) => source.id)).toEqual(["source-a", "source-b"]);
   });
 
   it("calls OpenAI Responses API with strict JSON schema output", async () => {
