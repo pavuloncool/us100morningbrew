@@ -49,6 +49,8 @@ export function BriefingView({ briefing }: BriefingViewProps) {
 
   return (
     <div className="page">
+      <ProductInfoPanel locale={locale} />
+
       <section className="briefing-hero" aria-labelledby="briefing-title">
         <div className="hero-copy">
           <p className="eyebrow">US100 Morning Brew / {formatDate(briefing.date, locale)}</p>
@@ -69,8 +71,6 @@ export function BriefingView({ briefing }: BriefingViewProps) {
           </span>
         </aside>
       </section>
-
-      <ProductInfoPanel locale={locale} />
 
       <section className="key-signal" aria-labelledby="key-signal-title">
         <p className="eyebrow">{copy.keySignal}</p>
