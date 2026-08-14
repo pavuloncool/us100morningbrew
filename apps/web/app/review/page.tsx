@@ -144,14 +144,23 @@ export default async function ReviewPage({ searchParams }: ReviewPageProps) {
           <form action="/api/review/rerun" method="post">
             {token ? <input name="token" type="hidden" value={token} /> : null}
             <input name="locales" type="hidden" value="pl" />
+            <input name="mode" type="hidden" value="quick" />
             <button className="button-primary" type="submit">
-              Uruchom dzisiejszy briefing PL
+              Szybki test PL
+            </button>
+          </form>
+          <form action="/api/review/rerun" method="post">
+            {token ? <input name="token" type="hidden" value={token} /> : null}
+            <input name="locales" type="hidden" value="pl" />
+            <input name="mode" type="hidden" value="full" />
+            <button className="button-secondary" type="submit">
+              Pełny research PL
             </button>
           </form>
         </div>
         <p className="review-actions-note">
-          Test ręczny działa w skróconym trybie PL, żeby zmieścić się w limicie Vercel. Pełne
-          uruchomienie PL + EN zostaje dla porannego crona.
+          Szybki test ogranicza źródła, żeby sprawdzić sam przepływ. Pełny research PL używa
+          pełnego modelu źródeł budget pipeline: ceny, FRED i RSS/news, jeśli są skonfigurowane.
         </p>
       </section>
 

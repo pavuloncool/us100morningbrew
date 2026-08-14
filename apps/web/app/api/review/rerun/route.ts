@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 
 import { runMorningBrewAutomation } from "@/lib/automation";
 import { isAppLocale, type AppLocale } from "@/lib/briefings";
+import { createRerunEnv, parseRerunMode, rerunOptions } from "@/lib/review-rerun";
 import {
   hasReviewAccess,
   reviewSessionCookieName,
@@ -36,19 +37,6 @@ function parseLocales(value: string | null): AppLocale[] | undefined {
   return locales.length > 0 ? locales : undefined;
 }
 
-function rerunEnv(): Record<string, string | undefined> {
-  return {
-    ...process.env,
-    OPENAI_MAX_OUTPUT_TOKENS: process.env.US100_RERUN_OPENAI_MAX_OUTPUT_TOKENS ?? "6000",
-    OPENAI_REASONING_EFFORT: process.env.US100_RERUN_OPENAI_REASONING_EFFORT ?? "minimal",
-    OPENAI_REQUEST_TIMEOUT_MS: process.env.US100_RERUN_OPENAI_TIMEOUT_MS ?? "45000",
-    OPENAI_TEXT_VERBOSITY: process.env.US100_RERUN_OPENAI_TEXT_VERBOSITY ?? "low",
-    US100_BUDGET_MAX_REQUESTS: process.env.US100_RERUN_MAX_REQUESTS ?? "15",
-    US100_BUDGET_NEWS_RSS_ENABLED: process.env.US100_RERUN_NEWS_RSS_ENABLED ?? "false",
-    US100_BUDGET_REQUEST_TIMEOUT_MS: process.env.US100_RERUN_REQUEST_TIMEOUT_MS ?? "4000"
-  };
-}
-
 export async function POST(request: NextRequest) {
   const contentType = request.headers.get("content-type") ?? "";
   const formData = contentType.includes("application/json")
@@ -70,14 +58,20 @@ export async function POST(request: NextRequest) {
     parseLocales(formData?.get("locales")?.toString() ?? null) ??
     parseLocales(typeof jsonData?.locales === "string" ? jsonData.locales : null) ??
     defaultRerunLocales;
+  const mode = parseRerunMode(
+    formData?.get("mode")?.toString() ??
+      (typeof jsonData?.mode === "string" ? jsonData.mode : null)
+  );
 
   try {
+    const modeOptions = rerunOptions(mode);
     const result = await runMorningBrewAutomation(
       {
         force: true,
-        locales
+        locales,
+        ...modeOptions
       },
-      rerunEnv()
+      createRerunEnv(mode)
     );
 
     if (formData) {

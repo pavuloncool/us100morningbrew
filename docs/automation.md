@@ -67,7 +67,7 @@ FRED_API_KEY=<optional-free-fred-api-key>
 Rekomendacja produkcyjna: `US100_GENERATION_TARGET_STATUS=draft`.
 Briefing staje sie publiczny dopiero po akceptacji w `/review`.
 
-Opcjonalne limity dla recznego przycisku w `/review`:
+Opcjonalne limity dla szybkiego testu w `/review`:
 
 ```bash
 US100_RERUN_MAX_REQUESTS=15
@@ -84,6 +84,22 @@ wersje PL, bez RSS news, z mniejsza liczba zapytan i limitem OpenAI ustawionym
 tak, zeby funkcja zdazyla zapisac wynik albo blad przed timeoutem Vercel.
 Budget collector pobiera zrodla rownolegle, zeby wiele wolnych odpowiedzi z
 zewnetrznych serwisow nie blokowalo calego uruchomienia sekwencyjnie.
+
+Opcjonalne limity dla pelnego recznego researchu PL w `/review`:
+
+```bash
+US100_FULL_RERUN_MAX_REQUESTS=30
+US100_FULL_RERUN_REQUEST_TIMEOUT_MS=8000
+US100_FULL_RERUN_OPENAI_TIMEOUT_MS=50000
+US100_FULL_RERUN_OPENAI_MAX_OUTPUT_TOKENS=6500
+US100_FULL_RERUN_OPENAI_REASONING_EFFORT=minimal
+US100_FULL_RERUN_OPENAI_TEXT_VERBOSITY=low
+US100_FULL_RERUN_NEWS_RSS_ENABLED=true
+```
+
+Pelny reczny research uzywa tego samego modelu zrodel co budget cron:
+Stooq/FRED/RSS zgodnie z konfiguracja env. Zapisuje osobny draft ze slugiem
+`full-research-test`, zeby nie nadpisac juz opublikowanego briefingu dnia.
 
 ## Approval
 
@@ -104,10 +120,15 @@ Po akceptacji:
 - system probuje utworzyc draft newslettera w Kit, jesli Kit jest
   skonfigurowany.
 
-W `/review` jest tez przycisk do recznego ponowienia dzisiejszego briefingu PL.
-Jest przeznaczony do testow i napraw po bledzie. Jezeli poprzednie uruchomienie
-zostalo przerwane przez timeout Vercel i zostalo w statusie `running`, system po
-5 minutach traktuje je jako przeterminowane i pozwala je ponowic.
+W `/review` sa dwa przyciski reczne:
+
+- `Szybki test PL`: sprawdza przeplyw przy ograniczonym evidence packu.
+- `Pelny research PL`: generuje draft na podstawie pelnego modelu zrodel budget
+  pipeline.
+
+Jezeli poprzednie uruchomienie zostalo przerwane przez timeout Vercel i zostalo
+w statusie `running`, system po 5 minutach traktuje je jako przeterminowane i
+pozwala je ponowic.
 
 ## Newsletter / Kit
 

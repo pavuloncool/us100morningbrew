@@ -11,6 +11,7 @@ export type ResearchRunContext = {
   locale: Locale;
   now?: Date;
   runId?: string;
+  slugSuffix?: string;
   targetStatus?: Extract<MorningBrew["status"], "draft" | "published">;
 };
 
@@ -180,6 +181,13 @@ function withCanonicalSources(rawBriefing: unknown, sources: SourceDocument[]): 
   };
 }
 
+function withSlugSuffix(slug: string, suffix: string | undefined): string {
+  if (!suffix) {
+    return slug;
+  }
+  return slug.endsWith(`-${suffix}`) ? slug : `${slug}-${suffix}`;
+}
+
 function normalizeGeneratedBriefing(
   rawBriefing: unknown,
   context: ResearchRunContext,
@@ -190,13 +198,17 @@ function normalizeGeneratedBriefing(
   );
 
   if (!context.targetStatus) {
-    return parsed;
+    return MorningBrewSchema.parse({
+      ...parsed,
+      slug: withSlugSuffix(parsed.slug, context.slugSuffix)
+    });
   }
 
   return MorningBrewSchema.parse({
     ...parsed,
     publishedAt:
       context.targetStatus === "published" ? parsed.publishedAt ?? isoNow(context) : null,
+    slug: withSlugSuffix(parsed.slug, context.slugSuffix),
     status: context.targetStatus
   });
 }

@@ -196,6 +196,20 @@ describe("Morning Brew pipeline", () => {
     expect(result.briefing.sources.map((source) => source.id)).toEqual(["source-a", "source-b"]);
   });
 
+  it("adds a slug suffix for manual review runs", async () => {
+    const pipeline = createFixtureMorningBrewPipeline();
+    const result = await pipeline.run({
+      ...context,
+      slugSuffix: "full-research-test"
+    });
+
+    expect(result.status).toBe("succeeded");
+    if (result.status !== "succeeded") {
+      throw new Error(result.error);
+    }
+    expect(result.briefing.slug).toBe("2026-08-13-us100-morning-brew-full-research-test");
+  });
+
   it("calls OpenAI Responses API with strict JSON schema output", async () => {
     const briefing = getLatestBriefing("pl");
     const requests: Array<{ body: unknown; url: string }> = [];

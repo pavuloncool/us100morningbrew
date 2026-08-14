@@ -33,8 +33,11 @@ export type WarsawRunWindow = {
 export type MorningBrewAutomationOptions = {
   date?: string;
   force?: boolean;
+  idempotencyScope?: string;
   locales?: AppLocale[];
   now?: Date;
+  runSource?: string;
+  slugSuffix?: string;
 };
 
 export type LocaleAutomationResult = {
@@ -162,6 +165,7 @@ export async function runMorningBrewAutomation(
   const force = options.force ?? false;
   const date = options.date ?? window.date;
   const locales = options.locales ?? parseLocales(env.US100_CRON_LOCALES);
+  const runSource = options.runSource ?? "vercel-cron";
 
   if (!force && !window.shouldRun) {
     return {
@@ -181,11 +185,13 @@ export async function runMorningBrewAutomation(
   const localeResults: LocaleAutomationResult[] = [];
 
   for (const locale of locales) {
-    const idempotencyKey = `morning-brew:${date}:${locale}`;
+    const idempotencyKey = options.idempotencyScope
+      ? `morning-brew:${date}:${locale}:${options.idempotencyScope}`
+      : `morning-brew:${date}:${locale}`;
     const claim = await researchRunRepository.claimResearchRun({
       idempotencyKey,
       locale,
-      metrics: { source: "vercel-cron" },
+      metrics: { source: runSource },
       runDate: date
     });
 
@@ -212,6 +218,7 @@ export async function runMorningBrewAutomation(
       locale: locale satisfies Locale,
       now,
       runId: claim.run.id,
+      slugSuffix: options.slugSuffix,
       targetStatus: targetStatusFromEnv(env)
     });
 
