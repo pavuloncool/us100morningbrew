@@ -206,10 +206,11 @@ describe("storage repository", () => {
       apiKey: "test-key",
       url: "https://example.supabase.co",
       fetch: async (input, init) => {
+        const url = String(input);
         requests.push({
           body: init?.body ? JSON.parse(String(init.body)) : undefined,
           method: init?.method ?? "GET",
-          url: String(input)
+          url
         });
 
         if (init?.method === "PATCH") {
@@ -224,6 +225,13 @@ describe("storage repository", () => {
               status: 200
             }
           );
+        }
+
+        if (url.includes("slug=neq.")) {
+          return new Response(JSON.stringify([]), {
+            headers: { "Content-Type": "application/json" },
+            status: 200
+          });
         }
 
         return new Response(
@@ -254,6 +262,101 @@ describe("storage repository", () => {
     expect(published.status).toBe("published");
     expect(published.publishedAt).toBe("2026-08-13T07:00:00.000Z");
     expect(requests.some((request) => request.method === "PATCH")).toBe(true);
+  });
+
+  it("archives older published briefings from the same date and language", async () => {
+    const newerDraft = MorningBrewSchema.parse({
+      ...sampleBriefing,
+      publishedAt: null,
+      slug: "2026-08-13-us100-morning-brew-full-research-test",
+      status: "draft"
+    });
+    const olderPublished = MorningBrewSchema.parse({
+      ...sampleBriefing,
+      headline: "Older briefing",
+      publishedAt: "2026-08-13T06:00:00.000Z",
+      slug: "2026-08-13-us100-morning-brew",
+      status: "published"
+    });
+    const requests: Array<{ body?: unknown; method: string; url: string }> = [];
+    const repository = createSupabaseRestBriefingRepository({
+      apiKey: "test-key",
+      url: "https://example.supabase.co",
+      fetch: async (input, init) => {
+        const url = String(input);
+        requests.push({
+          body: init?.body ? JSON.parse(String(init.body)) : undefined,
+          method: init?.method ?? "GET",
+          url
+        });
+
+        if (init?.method === "PATCH") {
+          return new Response(
+            JSON.stringify([
+              {
+                payload: (requests.at(-1)?.body as { payload: unknown }).payload
+              }
+            ]),
+            {
+              headers: { "Content-Type": "application/json" },
+              status: 200
+            }
+          );
+        }
+
+        if (url.includes("slug=neq.")) {
+          return new Response(
+            JSON.stringify([
+              {
+                id: "briefing-old",
+                language: "pl",
+                payload: olderPublished,
+                published_at: olderPublished.publishedAt,
+                slug: olderPublished.slug,
+                status: "published"
+              }
+            ]),
+            {
+              headers: { "Content-Type": "application/json" },
+              status: 200
+            }
+          );
+        }
+
+        return new Response(
+          JSON.stringify([
+            {
+              id: "briefing-new",
+              language: "pl",
+              payload: newerDraft,
+              published_at: null,
+              slug: newerDraft.slug,
+              status: "draft"
+            }
+          ]),
+          {
+            headers: { "Content-Type": "application/json" },
+            status: 200
+          }
+        );
+      }
+    });
+
+    const published = await repository.publishBriefing(
+      newerDraft.slug,
+      "pl",
+      "2026-08-13T07:00:00.000Z"
+    );
+
+    const patchBodies = requests
+      .filter((request) => request.method === "PATCH")
+      .map((request) => request.body as { payload?: { slug?: string; status?: string } });
+
+    expect(published.slug).toBe(newerDraft.slug);
+    expect(patchBodies).toHaveLength(2);
+    expect(patchBodies[0]?.payload?.status).toBe("published");
+    expect(patchBodies[1]?.payload?.slug).toBe(olderPublished.slug);
+    expect(patchBodies[1]?.payload?.status).toBe("archived");
   });
 
   it("claims research runs idempotently", async () => {

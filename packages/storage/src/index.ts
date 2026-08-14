@@ -163,6 +163,15 @@ function toPublishedBriefing(row: SupabaseBriefingRow): MorningBrew {
   return MorningBrewSchema.parse(row.payload);
 }
 
+function toArchivedBriefing(row: SupabaseBriefingRow): MorningBrew {
+  const briefing = MorningBrewSchema.parse(row.payload);
+  return MorningBrewSchema.parse({
+    ...briefing,
+    publishedAt: briefing.publishedAt ?? row.published_at,
+    status: "archived"
+  });
+}
+
 function toStoredBriefingRecord(row: SupabaseBriefingRow): StoredBriefingRecord {
   return {
     briefing: MorningBrewSchema.parse(row.payload),
@@ -376,7 +385,40 @@ export function createSupabaseRestBriefingRepository(
       if (!rows[0]) {
         throw new Error(`Briefing ${slug}/${locale} was not published.`);
       }
-      return toPublishedBriefing(rows[0]);
+      const published = toPublishedBriefing(rows[0]);
+
+      const olderPublishedUrl = briefingUrl(config.url, {
+        date: `eq.${published.date}`,
+        language: `eq.${LocaleSchema.parse(locale)}`,
+        select: briefingSelect(),
+        slug: `neq.${slug}`,
+        status: "eq.published"
+      });
+      const olderPublishedRows = await parseSupabaseResponse<SupabaseBriefingRow[]>(
+        await fetcher(olderPublishedUrl, { headers })
+      );
+      await Promise.all(
+        olderPublishedRows.map(async (row) => {
+          const archivedBriefing = toArchivedBriefing(row);
+          const archiveUrl = briefingUrl(config.url, {
+            language: `eq.${LocaleSchema.parse(row.language)}`,
+            select: "payload",
+            slug: `eq.${row.slug}`
+          });
+          await parseSupabaseResponse<SupabaseBriefingRow[]>(
+            await fetcher(archiveUrl, {
+              body: JSON.stringify(toWritableRow(archivedBriefing)),
+              headers: {
+                ...headers,
+                Prefer: "return=representation"
+              },
+              method: "PATCH"
+            })
+          );
+        })
+      );
+
+      return published;
     },
 
     async saveBriefing(briefing) {
