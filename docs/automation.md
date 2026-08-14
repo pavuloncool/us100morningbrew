@@ -70,15 +70,20 @@ Briefing staje sie publiczny dopiero po akceptacji w `/review`.
 Opcjonalne limity dla recznego przycisku w `/review`:
 
 ```bash
-US100_RERUN_MAX_REQUESTS=12
+US100_RERUN_MAX_REQUESTS=15
 US100_RERUN_REQUEST_TIMEOUT_MS=4000
-US100_RERUN_OPENAI_TIMEOUT_MS=35000
+US100_RERUN_OPENAI_TIMEOUT_MS=45000
+US100_RERUN_OPENAI_MAX_OUTPUT_TOKENS=6000
+US100_RERUN_OPENAI_REASONING_EFFORT=minimal
+US100_RERUN_OPENAI_TEXT_VERBOSITY=low
 US100_RERUN_NEWS_RSS_ENABLED=false
 ```
 
 Reczny rerun jest celowo krotszy niz poranny cron: domyslnie uruchamia tylko
 wersje PL, bez RSS news, z mniejsza liczba zapytan i limitem OpenAI ustawionym
 tak, zeby funkcja zdazyla zapisac wynik albo blad przed timeoutem Vercel.
+Budget collector pobiera zrodla rownolegle, zeby wiele wolnych odpowiedzi z
+zewnetrznych serwisow nie blokowalo calego uruchomienia sekwencyjnie.
 
 ## Approval
 
@@ -147,5 +152,8 @@ curl \
 - OpenAI Responses API adapter jest gotowy.
 - OpenAI Responses API adapter ma limit czasu konfigurowany przez
   `OPENAI_REQUEST_TIMEOUT_MS`; reczny rerun uzywa `US100_RERUN_OPENAI_TIMEOUT_MS`.
+- OpenAI Responses API adapter ustawia szybki tryb dla GPT-5 przez
+  `OPENAI_REASONING_EFFORT=minimal`, `OPENAI_TEXT_VERBOSITY=low` i
+  `OPENAI_MAX_OUTPUT_TOKENS`.
 - Budget Research Pipeline jest dostepny przez `US100_RESEARCH_PROVIDER=budget`.
   Uzywa low-cost daily data i nie pobiera real-time market data.

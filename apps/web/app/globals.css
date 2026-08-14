@@ -378,6 +378,11 @@ select {
   overflow-wrap: anywhere;
 }
 
+.review-run-diagnostics {
+  color: var(--muted);
+  font-size: 15px;
+}
+
 .tone[data-run-status="drafted"],
 .tone[data-run-status="published"] {
   background: #e7efe8;

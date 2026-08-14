@@ -135,16 +135,49 @@ describe("Morning Brew pipeline", () => {
     expect(result.status).toBe("succeeded");
     expect(requests[0]?.url).toBe("https://api.openai.test/v1/responses");
     expect(requests[0]?.body).toMatchObject({
+      max_output_tokens: 6500,
       model: "gpt-5",
+      reasoning: {
+        effort: "minimal"
+      },
       store: false,
       text: {
         format: {
           name: "us100_morning_brew",
           strict: true,
           type: "json_schema"
-        }
+        },
+        verbosity: "low"
       }
     });
+  });
+
+  it("returns a readable OpenAI timeout error", async () => {
+    const client = createOpenAIResponsesGenerationClient({
+      apiKey: "test-key",
+      baseUrl: "https://api.openai.test",
+      fetch: (_input, init) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => {
+            reject(new DOMException("This operation was aborted", "AbortError"));
+          });
+        }),
+      requestTimeoutMs: 1
+    });
+
+    await expect(client.generateMorningBrew({
+      input: {
+        analysis: await createFixtureAnalyzer().analyze(
+          await createFixtureCollector().collect(context),
+          context
+        ),
+        context,
+        evidencePack: await createFixtureCollector().collect(context)
+      },
+      instructions: "Return JSON.",
+      schemaName: "MorningBrewSchema",
+      system: "Test."
+    })).rejects.toThrow("OpenAI generation timed out after");
   });
 
   it("collects and analyzes budget research evidence without paid data providers", async () => {

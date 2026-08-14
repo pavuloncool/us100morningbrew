@@ -218,9 +218,12 @@ export async function runMorningBrewAutomation(
     if (result.status === "succeeded") {
       await researchRunRepository.completeResearchRun(claim.run.id, {
         metrics: {
+          evidenceSnapshots: result.evidencePack.snapshots.length,
+          evidenceSources: result.evidencePack.sources.length,
           issues: result.quality.issues,
           slug: result.briefing.slug,
-          status: result.briefing.status
+          status: result.briefing.status,
+          timingsMs: result.timingsMs
         },
         status: statusForBriefing(result.briefing)
       });
@@ -236,7 +239,12 @@ export async function runMorningBrewAutomation(
 
     await researchRunRepository.completeResearchRun(claim.run.id, {
       errorMessage: result.error,
-      metrics: { issues: result.quality.issues },
+      metrics: {
+        evidenceSnapshots: result.evidencePack?.snapshots.length ?? null,
+        evidenceSources: result.evidencePack?.sources.length ?? null,
+        issues: result.quality.issues,
+        timingsMs: result.timingsMs
+      },
       status: "failed"
     });
     localeResults.push({

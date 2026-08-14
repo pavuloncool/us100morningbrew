@@ -39,8 +39,11 @@ function parseLocales(value: string | null): AppLocale[] | undefined {
 function rerunEnv(): Record<string, string | undefined> {
   return {
     ...process.env,
-    OPENAI_REQUEST_TIMEOUT_MS: process.env.US100_RERUN_OPENAI_TIMEOUT_MS ?? "35000",
-    US100_BUDGET_MAX_REQUESTS: process.env.US100_RERUN_MAX_REQUESTS ?? "12",
+    OPENAI_MAX_OUTPUT_TOKENS: process.env.US100_RERUN_OPENAI_MAX_OUTPUT_TOKENS ?? "6000",
+    OPENAI_REASONING_EFFORT: process.env.US100_RERUN_OPENAI_REASONING_EFFORT ?? "minimal",
+    OPENAI_REQUEST_TIMEOUT_MS: process.env.US100_RERUN_OPENAI_TIMEOUT_MS ?? "45000",
+    OPENAI_TEXT_VERBOSITY: process.env.US100_RERUN_OPENAI_TEXT_VERBOSITY ?? "low",
+    US100_BUDGET_MAX_REQUESTS: process.env.US100_RERUN_MAX_REQUESTS ?? "15",
     US100_BUDGET_NEWS_RSS_ENABLED: process.env.US100_RERUN_NEWS_RSS_ENABLED ?? "false",
     US100_BUDGET_REQUEST_TIMEOUT_MS: process.env.US100_RERUN_REQUEST_TIMEOUT_MS ?? "4000"
   };

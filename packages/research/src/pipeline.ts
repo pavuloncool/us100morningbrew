@@ -101,6 +101,7 @@ export type PipelineSuccessResult = {
   savedBriefing: MorningBrew | null;
   startedAt: string;
   status: "succeeded";
+  timingsMs: Record<string, number>;
 };
 
 export type PipelineFailedResult = {
@@ -112,6 +113,7 @@ export type PipelineFailedResult = {
   runId: string;
   startedAt: string;
   status: "failed";
+  timingsMs: Record<string, number>;
 };
 
 export type PipelineRunResult = PipelineSuccessResult | PipelineFailedResult;
@@ -292,18 +294,29 @@ export function createMorningBrewPipeline(
       };
       const runId = createRunId(parsedContext);
       const startedAt = isoNow(parsedContext);
+      const runStartedAtMs = Date.now();
+      const timingsMs: Record<string, number> = {};
       let evidencePack: EvidencePack | undefined;
       let analysis: AnalysisOutput | undefined;
 
       try {
+        const collectStartedAtMs = Date.now();
         evidencePack = await config.collector.collect(parsedContext);
+        timingsMs.collect = Date.now() - collectStartedAtMs;
+        const analyzeStartedAtMs = Date.now();
         analysis = await config.analyzer.analyze(evidencePack, parsedContext);
+        timingsMs.analyze = Date.now() - analyzeStartedAtMs;
         const generationInput = { analysis, context: parsedContext, evidencePack };
+        const generateStartedAtMs = Date.now();
         const rawBriefing = await config.generator.generate(generationInput);
+        timingsMs.generate = Date.now() - generateStartedAtMs;
+        const validateStartedAtMs = Date.now();
         const briefing = normalizeGeneratedBriefing(rawBriefing, parsedContext);
         const quality = runQualityGates(briefing, generationInput, qualityGates);
+        timingsMs.validate = Date.now() - validateStartedAtMs;
 
         if (!quality.passed) {
+          timingsMs.total = Date.now() - runStartedAtMs;
           return {
             analysis,
             completedAt: isoNow(parsedContext),
@@ -312,11 +325,15 @@ export function createMorningBrewPipeline(
             quality,
             runId,
             startedAt,
-            status: "failed"
+            status: "failed",
+            timingsMs
           };
         }
 
+        const saveStartedAtMs = Date.now();
         const savedBriefing = config.writer ? await config.writer.saveBriefing(briefing) : null;
+        timingsMs.save = Date.now() - saveStartedAtMs;
+        timingsMs.total = Date.now() - runStartedAtMs;
         return {
           analysis,
           briefing,
@@ -326,9 +343,11 @@ export function createMorningBrewPipeline(
           runId,
           savedBriefing,
           startedAt,
-          status: "succeeded"
+          status: "succeeded",
+          timingsMs
         };
       } catch (error) {
+        timingsMs.total = Date.now() - runStartedAtMs;
         return {
           analysis,
           completedAt: isoNow(parsedContext),
@@ -346,7 +365,8 @@ export function createMorningBrewPipeline(
           },
           runId,
           startedAt,
-          status: "failed"
+          status: "failed",
+          timingsMs
         };
       }
     }

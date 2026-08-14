@@ -6,8 +6,11 @@ type OpenAIResponsesGenerationClientConfig = {
   apiKey: string;
   baseUrl?: string;
   fetch?: FetchLike;
+  maxOutputTokens?: number;
   model?: string;
+  reasoningEffort?: string;
   requestTimeoutMs?: number;
+  textVerbosity?: string;
 };
 
 export type StructuredBriefingGenerationRequest = {
@@ -276,13 +279,21 @@ function buildOpenAIInput(request: StructuredBriefingGenerationRequest) {
   ];
 }
 
+function positiveNumber(value: string | undefined, fallback: number): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
 export function createOpenAIResponsesGenerationClient(
   config: OpenAIResponsesGenerationClientConfig
 ): StructuredGenerationClient {
   const fetcher = config.fetch ?? fetch;
   const baseUrl = config.baseUrl ?? "https://api.openai.com";
   const model = config.model ?? "gpt-5-mini";
+  const maxOutputTokens = config.maxOutputTokens ?? 6500;
+  const reasoningEffort = config.reasoningEffort ?? "minimal";
   const requestTimeoutMs = config.requestTimeoutMs ?? 45_000;
+  const textVerbosity = config.textVerbosity ?? "low";
 
   return {
     async generateMorningBrew(request) {
@@ -292,7 +303,11 @@ export function createOpenAIResponsesGenerationClient(
         const response = await fetcher(new URL("/v1/responses", baseUrl), {
           body: JSON.stringify({
             input: buildOpenAIInput(request),
+            max_output_tokens: maxOutputTokens,
             model,
+            reasoning: {
+              effort: reasoningEffort
+            },
             store: false,
             text: {
               format: {
@@ -302,7 +317,8 @@ export function createOpenAIResponsesGenerationClient(
                 schema: morningBrewJsonSchema,
                 strict: true,
                 type: "json_schema"
-              }
+              },
+              verbosity: textVerbosity
             }
           }),
           headers: {
@@ -319,6 +335,11 @@ export function createOpenAIResponsesGenerationClient(
         }
 
         return JSON.parse(extractResponseText(responseBody));
+      } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") {
+          throw new Error(`OpenAI generation timed out after ${Math.round(requestTimeoutMs / 1000)}s.`);
+        }
+        throw error;
       } finally {
         clearTimeout(timeout);
       }
@@ -336,7 +357,10 @@ export function createOpenAIResponsesGenerationClientFromEnv(
 
   return createOpenAIResponsesGenerationClient({
     apiKey,
+    maxOutputTokens: positiveNumber(env.OPENAI_MAX_OUTPUT_TOKENS, 6500),
     model: env.OPENAI_MODEL ?? "gpt-5-mini",
-    requestTimeoutMs: Number(env.OPENAI_REQUEST_TIMEOUT_MS ?? 45_000)
+    reasoningEffort: env.OPENAI_REASONING_EFFORT ?? "minimal",
+    requestTimeoutMs: positiveNumber(env.OPENAI_REQUEST_TIMEOUT_MS, 45_000),
+    textVerbosity: env.OPENAI_TEXT_VERBOSITY ?? "low"
   });
 }

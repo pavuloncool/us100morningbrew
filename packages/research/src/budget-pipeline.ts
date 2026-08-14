@@ -51,6 +51,11 @@ type FredObservation = {
   value: number;
 };
 
+type CollectorItemResult = {
+  snapshot: MarketSnapshot | null;
+  source: SourceDocument | null;
+};
+
 const defaultTrackedPrices = [
   { label: "Nasdaq-100", sourceId: "stooq-ndx", symbol: "^ndx" },
   { label: "QQQ", sourceId: "stooq-qqq", symbol: "qqq.us" },
@@ -240,12 +245,17 @@ function defaultNewsRssUrl(): string {
   return "https://news.google.com/rss/search?q=Nasdaq%20100%20OR%20US100%20OR%20NVDA%20OR%20semiconductors%20OR%20Federal%20Reserve&hl=en-US&gl=US&ceid=US:en";
 }
 
+function positiveNumber(value: string | undefined, fallback: number): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
 export function createBudgetResearchCollector(config: BudgetCollectorConfig = {}): ResearchCollector {
   const env = config.env ?? process.env;
   const fetcher = config.fetch ?? fetch;
-  const maxRequests = config.maxRequests ?? Number(env.US100_BUDGET_MAX_REQUESTS ?? 30);
+  const maxRequests = config.maxRequests ?? positiveNumber(env.US100_BUDGET_MAX_REQUESTS, 30);
   const requestTimeoutMs =
-    config.requestTimeoutMs ?? Number(env.US100_BUDGET_REQUEST_TIMEOUT_MS ?? 8000);
+    config.requestTimeoutMs ?? positiveNumber(env.US100_BUDGET_REQUEST_TIMEOUT_MS, 8000);
   let requestCount = 0;
 
   async function request(input: string | URL): Promise<Response> {
@@ -268,45 +278,61 @@ export function createBudgetResearchCollector(config: BudgetCollectorConfig = {}
   }> {
     const start = yyyymmdd(lookbackDate(context.date, 360));
     const end = yyyymmdd(context.date);
-    const snapshots: MarketSnapshot[] = [];
-    const sources: SourceDocument[] = [];
-
-    for (const item of defaultTrackedPrices) {
-      const url = requestUrlWithParams("https://stooq.com/q/d/l/", {
-        d1: start,
-        d2: end,
-        i: "d",
-        s: item.symbol
-      });
-      try {
-        const response = await request(url);
-        if (!response.ok) {
-          throw new Error(`Stooq returned ${response.status}`);
-        }
-        const payload = pricePayload(item.symbol, item.label, parseStooqCsv(await response.text()));
-        if (!payload) {
-          continue;
-        }
-        snapshots.push({
-          capturedAt: (context.now ?? new Date()).toISOString(),
-          payload,
-          source: item.sourceId
+    const results: CollectorItemResult[] = await Promise.all(
+      defaultTrackedPrices.map(async (item) => {
+        const url = requestUrlWithParams("https://stooq.com/q/d/l/", {
+          d1: start,
+          d2: end,
+          i: "d",
+          s: item.symbol
         });
-        sources.push(sourceDocument(item.sourceId, `${item.label} daily prices`, String(url), payload.date));
-      } catch (error) {
-        snapshots.push({
-          capturedAt: (context.now ?? new Date()).toISOString(),
-          payload: {
-            error: error instanceof Error ? error.message : String(error),
-            label: item.label,
-            symbol: item.symbol
-          },
-          source: `${item.sourceId}-error`
-        });
-      }
-    }
+        try {
+          const response = await request(url);
+          if (!response.ok) {
+            throw new Error(`Stooq returned ${response.status}`);
+          }
+          const payload = pricePayload(item.symbol, item.label, parseStooqCsv(await response.text()));
+          if (!payload) {
+            return { snapshot: null, source: null };
+          }
+          return {
+            snapshot: {
+              capturedAt: (context.now ?? new Date()).toISOString(),
+              payload,
+              source: item.sourceId
+            } satisfies MarketSnapshot,
+            source: sourceDocument(
+              item.sourceId,
+              `${item.label} daily prices`,
+              String(url),
+              payload.date
+            )
+          };
+        } catch (error) {
+          return {
+            snapshot: {
+              capturedAt: (context.now ?? new Date()).toISOString(),
+              payload: {
+                error: error instanceof Error ? error.message : String(error),
+                label: item.label,
+                symbol: item.symbol
+              },
+              source: `${item.sourceId}-error`
+            } satisfies MarketSnapshot,
+            source: null
+          };
+        }
+      })
+    );
 
-    return { snapshots, sources };
+    return {
+      snapshots: results
+        .map((result) => result.snapshot)
+        .filter((snapshot): snapshot is MarketSnapshot => snapshot !== null),
+      sources: results
+        .map((result) => result.source)
+        .filter((source): source is SourceDocument => source !== null)
+    };
   }
 
   async function collectFredSnapshots(context: ResearchRunContext): Promise<{
@@ -318,60 +344,70 @@ export function createBudgetResearchCollector(config: BudgetCollectorConfig = {}
       return { snapshots: [], sources: [] };
     }
 
-    const snapshots: MarketSnapshot[] = [];
-    const sources: SourceDocument[] = [];
-    for (const series of fredSeries) {
-      const url = requestUrlWithParams("https://api.stlouisfed.org/fred/series/observations", {
-        api_key: apiKey,
-        file_type: "json",
-        observation_end: context.date,
-        observation_start: lookbackDate(context.date, 14),
-        series_id: series.seriesId,
-        sort_order: "asc"
-      });
-      try {
-        const response = await request(url);
-        if (!response.ok) {
-          throw new Error(`FRED returned ${response.status}`);
-        }
-        const observations = parseFredObservations(await response.json());
-        const latest = observations.at(-1);
-        if (!latest) {
-          continue;
-        }
-        const previous = observations.at(-2);
-        snapshots.push({
-          capturedAt: (context.now ?? new Date()).toISOString(),
-          payload: {
-            change: previous ? latest.value - previous.value : null,
-            date: latest.date,
-            label: series.label,
-            seriesId: series.seriesId,
-            value: latest.value
-          },
-          source: series.sourceId
+    const results: CollectorItemResult[] = await Promise.all(
+      fredSeries.map(async (series) => {
+        const url = requestUrlWithParams("https://api.stlouisfed.org/fred/series/observations", {
+          api_key: apiKey,
+          file_type: "json",
+          observation_end: context.date,
+          observation_start: lookbackDate(context.date, 14),
+          series_id: series.seriesId,
+          sort_order: "asc"
         });
-        sources.push(
-          sourceDocument(
-            series.sourceId,
-            `${series.label} via FRED`,
-            `https://fred.stlouisfed.org/series/${series.seriesId}`,
-            latest.date
-          )
-        );
-      } catch (error) {
-        snapshots.push({
-          capturedAt: (context.now ?? new Date()).toISOString(),
-          payload: {
-            error: error instanceof Error ? error.message : String(error),
-            label: series.label,
-            seriesId: series.seriesId
-          },
-          source: `${series.sourceId}-error`
-        });
-      }
-    }
-    return { snapshots, sources };
+        try {
+          const response = await request(url);
+          if (!response.ok) {
+            throw new Error(`FRED returned ${response.status}`);
+          }
+          const observations = parseFredObservations(await response.json());
+          const latest = observations.at(-1);
+          if (!latest) {
+            return { snapshot: null, source: null };
+          }
+          const previous = observations.at(-2);
+          return {
+            snapshot: {
+              capturedAt: (context.now ?? new Date()).toISOString(),
+              payload: {
+                change: previous ? latest.value - previous.value : null,
+                date: latest.date,
+                label: series.label,
+                seriesId: series.seriesId,
+                value: latest.value
+              },
+              source: series.sourceId
+            } satisfies MarketSnapshot,
+            source: sourceDocument(
+              series.sourceId,
+              `${series.label} via FRED`,
+              `https://fred.stlouisfed.org/series/${series.seriesId}`,
+              latest.date
+            )
+          };
+        } catch (error) {
+          return {
+            snapshot: {
+              capturedAt: (context.now ?? new Date()).toISOString(),
+              payload: {
+                error: error instanceof Error ? error.message : String(error),
+                label: series.label,
+                seriesId: series.seriesId
+              },
+              source: `${series.sourceId}-error`
+            } satisfies MarketSnapshot,
+            source: null
+          };
+        };
+      })
+    );
+    return {
+      snapshots: results
+        .map((result) => result.snapshot)
+        .filter((snapshot): snapshot is MarketSnapshot => snapshot !== null),
+      sources: results
+        .map((result) => result.source)
+        .filter((source): source is SourceDocument => source !== null)
+    };
   }
 
   async function collectNewsSources(): Promise<SourceDocument[]> {

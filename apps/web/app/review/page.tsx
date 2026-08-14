@@ -62,6 +62,39 @@ function formatRunTime(value: string | null): string {
   }).format(new Date(value));
 }
 
+function formatSeconds(value: unknown): string | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return null;
+  }
+  return `${(value / 1000).toFixed(1)}s`;
+}
+
+function formatRunDiagnostics(metrics: Record<string, unknown>): string | null {
+  const timings =
+    typeof metrics.timingsMs === "object" && metrics.timingsMs !== null
+      ? (metrics.timingsMs as Record<string, unknown>)
+      : null;
+  if (!timings) {
+    return null;
+  }
+
+  const parts = [
+    ["research", formatSeconds(timings.collect)],
+    ["analiza", formatSeconds(timings.analyze)],
+    ["OpenAI", formatSeconds(timings.generate)],
+    ["zapis", formatSeconds(timings.save)],
+    ["razem", formatSeconds(timings.total)]
+  ]
+    .filter((item): item is [string, string] => item[1] !== null)
+    .map(([label, value]) => `${label}: ${value}`);
+
+  if (typeof metrics.evidenceSources === "number") {
+    parts.push(`źródła: ${metrics.evidenceSources}`);
+  }
+
+  return parts.length > 0 ? parts.join(" / ") : null;
+}
+
 function rerunMessage(status: string | undefined): string | null {
   switch (status) {
     case "completed":
@@ -161,6 +194,7 @@ export default async function ReviewPage({ searchParams }: ReviewPageProps) {
           <ul className="review-run-list">
             {recentRuns.map((run) => {
               const stale = isStaleRunningRun(run);
+              const diagnostics = formatRunDiagnostics(run.metrics);
               return (
                 <li key={run.id}>
                   <div>
@@ -174,6 +208,7 @@ export default async function ReviewPage({ searchParams }: ReviewPageProps) {
                     {runStatusLabel(run.status, stale)}
                   </span>
                   {run.errorMessage ? <p>{run.errorMessage}</p> : null}
+                  {diagnostics ? <p className="review-run-diagnostics">{diagnostics}</p> : null}
                   {stale ? (
                     <p>
                       To uruchomienie prawdopodobnie zostało przerwane przez timeout Vercel.
