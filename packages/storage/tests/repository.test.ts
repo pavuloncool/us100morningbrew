@@ -227,7 +227,7 @@ describe("storage repository", () => {
           );
         }
 
-        if (url.includes("slug=neq.")) {
+        if (url.includes("id=neq.") || url.includes("slug=neq.")) {
           return new Response(JSON.stringify([]), {
             headers: { "Content-Type": "application/json" },
             status: 200
@@ -304,7 +304,7 @@ describe("storage repository", () => {
           );
         }
 
-        if (url.includes("slug=neq.")) {
+        if (url.includes("id=neq.") && url.includes("slug=eq.2026-08-13-us100-morning-brew")) {
           return new Response(
             JSON.stringify([
               {
@@ -321,6 +321,13 @@ describe("storage repository", () => {
               status: 200
             }
           );
+        }
+
+        if (url.includes("slug=neq.")) {
+          return new Response(JSON.stringify([]), {
+            headers: { "Content-Type": "application/json" },
+            status: 200
+          });
         }
 
         return new Response(
@@ -352,11 +359,12 @@ describe("storage repository", () => {
       .filter((request) => request.method === "PATCH")
       .map((request) => request.body as { payload?: { slug?: string; status?: string } });
 
-    expect(published.slug).toBe(newerDraft.slug);
+    expect(published.slug).toBe("2026-08-13-us100-morning-brew");
     expect(patchBodies).toHaveLength(2);
-    expect(patchBodies[0]?.payload?.status).toBe("published");
-    expect(patchBodies[1]?.payload?.slug).toBe(olderPublished.slug);
-    expect(patchBodies[1]?.payload?.status).toBe("archived");
+    expect(patchBodies[0]?.payload?.slug).toBe("2026-08-13-us100-morning-brew-archived-briefing");
+    expect(patchBodies[0]?.payload?.status).toBe("archived");
+    expect(patchBodies[1]?.payload?.slug).toBe("2026-08-13-us100-morning-brew");
+    expect(patchBodies[1]?.payload?.status).toBe("published");
   });
 
   it("claims research runs idempotently", async () => {

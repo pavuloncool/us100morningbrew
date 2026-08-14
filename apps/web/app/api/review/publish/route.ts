@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
   }
 
   const publishedBriefing = await publishBriefing(slug, locale);
-  const record = await getBriefingRecordBySlug(slug, locale, "any");
+  const record = await getBriefingRecordBySlug(publishedBriefing.slug, locale, "any");
   let newsletter = "skipped";
 
   try {
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (formData) {
-    return redirectToReview(request, locale, slug, token ?? null, newsletter);
+    return redirectToReview(request, locale, publishedBriefing.slug, token ?? null, newsletter);
   }
 
   return Response.json({
