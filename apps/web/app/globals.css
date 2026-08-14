@@ -134,9 +134,9 @@ select {
 .briefing-hero {
   border-bottom: 1px solid var(--border);
   display: grid;
-  gap: var(--space-8);
+  gap: var(--space-6);
   grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.8fr);
-  padding-bottom: var(--space-10);
+  padding-bottom: var(--space-8);
 }
 
 .eyebrow {
@@ -149,19 +149,19 @@ select {
 
 .hero-copy {
   display: grid;
-  gap: var(--space-5);
+  gap: var(--space-4);
 }
 
 .hero-copy h1 {
   font-size: var(--text-page-title-size);
-  line-height: var(--text-page-title-line-height);
+  line-height: 1.06;
   max-width: 820px;
 }
 
 .deck {
   color: var(--muted);
   font-size: 18px;
-  line-height: 1.5;
+  line-height: 1.42;
   max-width: 760px;
 }
 
