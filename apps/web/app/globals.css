@@ -254,6 +254,7 @@ select {
 .section,
 .key-signal,
 .signal-dashboard,
+.weekly-summary,
 .scorecard,
 .watch-list,
 .sources,
@@ -266,6 +267,7 @@ select {
 .section,
 .key-signal,
 .signal-dashboard,
+.weekly-summary,
 .scorecard,
 .watch-list,
 .sources {
@@ -280,6 +282,7 @@ select {
 .section h2,
 .key-signal h2,
 .signal-dashboard h2,
+.weekly-summary h2,
 .scorecard h2,
 .watch-list h2,
 .sources h2 {
@@ -290,6 +293,7 @@ select {
 .section p,
 .key-signal p,
 .signal-dashboard p,
+.weekly-summary p,
 .watch-list p {
   color: var(--muted);
 }
@@ -532,6 +536,39 @@ select {
 .signal-dashboard {
   display: grid;
   gap: var(--space-6);
+}
+
+.weekly-summary {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.weekly-summary__header {
+  align-items: start;
+  display: flex;
+  gap: var(--space-4);
+  justify-content: space-between;
+}
+
+.weekly-summary__header > div:first-child {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.weekly-summary__grid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.weekly-summary__grid > div {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.weekly-summary h3 {
+  font-size: 17px;
+  line-height: 1.25;
 }
 
 .signal-dashboard__header {
@@ -876,7 +913,8 @@ select {
   .briefing-hero,
   .section-grid,
   .review-bar,
-  .signal-dashboard__body {
+  .signal-dashboard__body,
+  .weekly-summary__grid {
     grid-template-columns: 1fr;
   }
 
@@ -884,7 +922,8 @@ select {
     justify-content: flex-start;
   }
 
-  .signal-dashboard__header {
+  .signal-dashboard__header,
+  .weekly-summary__header {
     display: grid;
   }
 

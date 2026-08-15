@@ -301,6 +301,60 @@ describe("Morning Brew pipeline", () => {
     expect(result.briefing.slug).toBe("2026-08-13-us100-morning-brew-full-research-test");
   });
 
+  it("requires weeklySummary for weekly report runs", async () => {
+    const pipeline = createFixtureMorningBrewPipeline();
+    const result = await pipeline.run({
+      ...context,
+      reportType: "weekly"
+    });
+
+    expect(result.status).toBe("succeeded");
+    if (result.status !== "succeeded") {
+      throw new Error(result.error);
+    }
+    expect(result.briefing.slug).toBe("2026-08-13-us100-weekly-short-thesis");
+    expect(result.briefing.weeklySummary?.title).toContain("Tygodniowe");
+  });
+
+  it("fails daily report runs that include a weeklySummary", async () => {
+    const briefing = getLatestBriefing("pl");
+    const pipeline = createMorningBrewPipeline({
+      analyzer: createFixtureAnalyzer(),
+      collector: createFixtureCollector(),
+      generator: {
+        async generate() {
+          return {
+            ...briefing,
+            date: context.date,
+            weeklySummary: {
+              evidence: [
+                {
+                  label: "Tydzień",
+                  sourceIds: ["fixture-market-data"],
+                  value: "Nieoczekiwany tygodniowy blok w dziennym raporcie."
+                }
+              ],
+              keyChanges: briefing.whatChanged,
+              levelsToWatch: briefing.levelsToWatch,
+              periodEnd: context.date,
+              periodStart: "2026-08-09",
+              thesisSignals: briefing.thesisScorecard,
+              title: "Tygodniowe podsumowanie",
+              verdict: briefing.verdict
+            }
+          };
+        }
+      }
+    });
+
+    const result = await pipeline.run(context);
+
+    expect(result.status).toBe("failed");
+    expect(result.quality.issues.some((issue) => issue.gateId === "weekly_summary_presence")).toBe(
+      true
+    );
+  });
+
   it("calls OpenAI Responses API with strict JSON schema output", async () => {
     const briefing = getLatestBriefing("pl");
     const requests: Array<{ body: unknown; url: string }> = [];
@@ -413,6 +467,12 @@ describe("Morning Brew pipeline", () => {
 
     expect(evidencePack.sources.some((source) => source.id === "stooq-ndx")).toBe(true);
     expect(evidencePack.snapshots.length).toBeGreaterThan(1);
+    expect(
+      evidencePack.snapshots.some(
+        (snapshot) =>
+          snapshot.source === "stooq-ndx" && typeof snapshot.payload.weekChangePct === "number"
+      )
+    ).toBe(true);
     expect(analysis.signals).toHaveLength(5);
     expect(analysis.summary).toContain("Budget pipeline");
   });

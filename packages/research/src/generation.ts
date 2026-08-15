@@ -98,6 +98,53 @@ const watchItemSchema = {
   type: "object"
 } as const;
 
+const weeklySummarySchema = {
+  additionalProperties: false,
+  properties: {
+    evidence: {
+      items: evidenceSchema,
+      type: "array"
+    },
+    keyChanges: {
+      items: watchItemSchema,
+      type: "array"
+    },
+    levelsToWatch: {
+      items: watchItemSchema,
+      type: "array"
+    },
+    periodEnd: { pattern: "^\\d{4}-\\d{2}-\\d{2}$", type: "string" },
+    periodStart: { pattern: "^\\d{4}-\\d{2}-\\d{2}$", type: "string" },
+    thesisSignals: {
+      items: scorecardItemSchema,
+      type: "array"
+    },
+    title: { type: "string" },
+    verdict: {
+      additionalProperties: false,
+      properties: {
+        conviction: { enum: ["low", "medium", "high"], type: "string" },
+        stance: { enum: signalImpactValues, type: "string" },
+        summary: { type: "string" },
+        whyItMatters: { type: "string" }
+      },
+      required: ["stance", "conviction", "summary", "whyItMatters"],
+      type: "object"
+    }
+  },
+  required: [
+    "periodStart",
+    "periodEnd",
+    "title",
+    "verdict",
+    "keyChanges",
+    "thesisSignals",
+    "levelsToWatch",
+    "evidence"
+  ],
+  type: "object"
+} as const;
+
 const sourceSchema = {
   additionalProperties: false,
   properties: {
@@ -181,6 +228,10 @@ export const morningBrewJsonSchema = {
     whatChanged: {
       items: watchItemSchema,
       type: "array"
+    },
+    weeklySummary: {
+      ...weeklySummarySchema,
+      type: ["object", "null"]
     }
   },
   required: [
@@ -198,6 +249,7 @@ export const morningBrewJsonSchema = {
     "thesisScorecard",
     "whatChanged",
     "levelsToWatch",
+    "weeklySummary",
     "sources"
   ],
   type: "object"
@@ -214,9 +266,13 @@ export function buildGenerationRequest(
     instructions: [
       `Return a complete ${publicationLanguage} US100 Morning Brew briefing.`,
       "Use only structured data matching MorningBrewSchema; do not return markdown.",
+      input.context.reportType === "weekly"
+        ? "This is a weekly Saturday report: include weeklySummary as a distinct market summary for the short thesis across the latest trading week."
+        : "This is a daily report: set weeklySummary to null.",
       "Actively falsify the medium-term US100 short thesis instead of only confirming it.",
       "For every material signal, explain why it matters using causal market reasoning.",
       "Choose one most important signal of the day and explain why it matters for US100.",
+      "Do not refer to XTB or XTB US100; frame the publication as US100 / Nasdaq-100 market analysis for the short thesis.",
       "Preserve source IDs from the evidence pack whenever evidence is referenced.",
       "Every sources[].observedAt value must be null or a full ISO datetime with timezone, never a date-only string."
     ].join("\n"),
@@ -239,7 +295,8 @@ export function buildTranslationRequest(
       "Return only structured data matching MorningBrewSchema; do not return markdown.",
       "Preserve the market conclusion, causal reasoning, signal impacts, scorecard logic, dates, and source IDs.",
       "Do not add new facts, new sources, new market claims, or independent analysis.",
-      "Translate all reader-facing text fields, including headline, deck, verdict, key signal, sections, scorecard, what changed, and levels to watch.",
+      "Translate all reader-facing text fields, including headline, deck, verdict, key signal, sections, scorecard, what changed, levels to watch, and weekly summary when present.",
+      "Do not refer to XTB or XTB US100; preserve the US100 / Nasdaq-100 market framing.",
       "Copy sources from the source briefing exactly; sources are evidence metadata, not prose to rewrite.",
       "Every sources[].observedAt value must be null or a full ISO datetime with timezone, never a date-only string."
     ].join("\n"),

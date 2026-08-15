@@ -44,6 +44,10 @@ type PriceSnapshotPayload = {
   sma50: number | null;
   sma200: number | null;
   symbol: string;
+  weekChangePct: number | null;
+  weekHigh: number | null;
+  weekLow: number | null;
+  weekStartDate: string | null;
 };
 
 type FredObservation = {
@@ -142,6 +146,8 @@ function pricePayload(symbol: string, label: string, bars: DailyBar[]): PriceSna
   const closes = bars.map((bar) => bar.close);
   const previous = bars.at(-2)?.close;
   const high20 = Math.max(...bars.slice(-20).map((bar) => bar.high));
+  const weekBars = bars.slice(-5);
+  const weekStart = weekBars.at(0);
   const sma20 = average(closes.slice(-20));
   const sma50 = average(closes.slice(-50));
   const sma200 = average(closes.slice(-200));
@@ -158,7 +164,11 @@ function pricePayload(symbol: string, label: string, bars: DailyBar[]): PriceSna
     sma20,
     sma50,
     sma200,
-    symbol
+    symbol,
+    weekChangePct: weekStart ? pctChange(latest.close, weekStart.close) : null,
+    weekHigh: weekBars.length > 0 ? Math.max(...weekBars.map((bar) => bar.high)) : null,
+    weekLow: weekBars.length > 0 ? Math.min(...weekBars.map((bar) => bar.low)) : null,
+    weekStartDate: weekStart?.date ?? null
   };
 }
 
@@ -549,7 +559,9 @@ export function createBudgetSignalAnalyzer(): SignalAnalyzer {
         ? leaders.filter((snapshot) => snapshot.aboveSma50).length / leaders.length
         : null;
       const leaderDayChange = averageKnown(leaders.map((snapshot) => snapshot.dayChangePct));
+      const leaderWeekChange = averageKnown(leaders.map((snapshot) => snapshot.weekChangePct));
       const semiDayChange = averageKnown(semis.map((snapshot) => snapshot.dayChangePct));
+      const semiWeekChange = averageKnown(semis.map((snapshot) => snapshot.weekChangePct));
       const ratesPressure =
         (dgs2?.change ?? 0) > 0.05 || (dgs10?.change ?? 0) > 0.05
           ? true
@@ -671,6 +683,20 @@ export function createBudgetSignalAnalyzer(): SignalAnalyzer {
           )
         );
       }
+      if (
+        context.reportType === "weekly" &&
+        ndx?.weekChangePct !== null &&
+        ndx?.weekChangePct !== undefined &&
+        leaderWeekChange !== null
+      ) {
+        divergences.push(
+          label(
+            context.locale,
+            `Tygodniowo NDX zmienił się o ${ndx.weekChangePct.toFixed(2)}%, a koszyk liderów średnio o ${leaderWeekChange.toFixed(2)}%.`,
+            `Over the week NDX changed ${ndx.weekChangePct.toFixed(2)}%, while the leader basket averaged ${leaderWeekChange.toFixed(2)}%.`
+          )
+        );
+      }
 
       return {
         generatedAt: (context.now ?? new Date()).toISOString(),
@@ -678,8 +704,8 @@ export function createBudgetSignalAnalyzer(): SignalAnalyzer {
         signals,
         summary: label(
           context.locale,
-          `Budget pipeline: NDX ${ndx?.close ?? "brak danych"}, liderzy powyżej 50 DMA ${leaderBreadth50 === null ? "brak danych" : `${Math.round(leaderBreadth50 * 100)}%`}, średnia zmiana liderów ${leaderDayChange === null ? "brak danych" : `${leaderDayChange.toFixed(2)}%`}.`,
-          `Budget pipeline: NDX ${ndx?.close ?? "missing"}, leaders above 50 DMA ${leaderBreadth50 === null ? "missing" : `${Math.round(leaderBreadth50 * 100)}%`}, average leader move ${leaderDayChange === null ? "missing" : `${leaderDayChange.toFixed(2)}%`}.`
+          `Budget pipeline: NDX ${ndx?.close ?? "brak danych"}, liderzy powyżej 50 DMA ${leaderBreadth50 === null ? "brak danych" : `${Math.round(leaderBreadth50 * 100)}%`}, średnia zmiana liderów ${leaderDayChange === null ? "brak danych" : `${leaderDayChange.toFixed(2)}%`}, średnia zmiana tygodniowa liderów ${leaderWeekChange === null ? "brak danych" : `${leaderWeekChange.toFixed(2)}%`}, semis tygodniowo ${semiWeekChange === null ? "brak danych" : `${semiWeekChange.toFixed(2)}%`}.`,
+          `Budget pipeline: NDX ${ndx?.close ?? "missing"}, leaders above 50 DMA ${leaderBreadth50 === null ? "missing" : `${Math.round(leaderBreadth50 * 100)}%`}, average leader move ${leaderDayChange === null ? "missing" : `${leaderDayChange.toFixed(2)}%`}, average leader weekly move ${leaderWeekChange === null ? "missing" : `${leaderWeekChange.toFixed(2)}%`}, semis weekly ${semiWeekChange === null ? "missing" : `${semiWeekChange.toFixed(2)}%`}.`
         )
       } satisfies AnalysisOutput;
     }

@@ -83,6 +83,8 @@ function formatRunDiagnostics(metrics: Record<string, unknown>): string | null {
     parts.push("tryb: szybki test");
   } else if (metrics.runSource === "vercel-cron") {
     parts.push("tryb: cron");
+  } else if (metrics.runSource === "weekly-cron") {
+    parts.push("tryb: tygodniowy cron");
   }
   if (metrics.translatedFromLocale === "pl") {
     parts.push("EN z tłumaczenia PL");

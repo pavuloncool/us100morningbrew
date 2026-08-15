@@ -78,6 +78,19 @@ export const SourceSchema = z
   })
   .strict();
 
+export const WeeklySummarySchema = z
+  .object({
+    periodStart: IsoDateSchema,
+    periodEnd: IsoDateSchema,
+    title: z.string().trim().min(1),
+    verdict: VerdictSchema,
+    keyChanges: z.array(WatchItemSchema).min(1),
+    thesisSignals: z.array(ScorecardItemSchema).min(1),
+    levelsToWatch: z.array(WatchItemSchema).min(1),
+    evidence: z.array(EvidenceSchema).min(1)
+  })
+  .strict();
+
 export const MorningBrewStatusSchema = z.enum(["draft", "published", "archived"]);
 
 export const MorningBrewSchema = z
@@ -104,6 +117,7 @@ export const MorningBrewSchema = z
     thesisScorecard: z.array(ScorecardItemSchema).min(1),
     whatChanged: z.array(WatchItemSchema).min(1),
     levelsToWatch: z.array(WatchItemSchema).min(1),
+    weeklySummary: WeeklySummarySchema.nullable().default(null),
     sources: z.array(SourceSchema).min(1)
   })
   .strict();
@@ -117,5 +131,6 @@ export type KeySignal = z.infer<typeof KeySignalSchema>;
 export type BriefingSection = z.infer<typeof BriefingSectionSchema>;
 export type ScorecardItem = z.infer<typeof ScorecardItemSchema>;
 export type WatchItem = z.infer<typeof WatchItemSchema>;
+export type WeeklySummary = z.infer<typeof WeeklySummarySchema>;
 export type Source = z.infer<typeof SourceSchema>;
 export type MorningBrew = z.infer<typeof MorningBrewSchema>;

@@ -24,6 +24,16 @@ Endpoint:
 - uruchamia pipeline collect -> analyze -> generate -> validate -> quality gates,
 - zapisuje briefing przez storage repository.
 
+Sobotnie podsumowanie tezy short uzywa osobnego endpointu:
+
+```txt
+GET /api/cron/weekly-summary
+```
+
+Endpoint ma ten sam model autoryzacji i zapisu, ale sprawdza okno
+`09:00 Europe/Warsaw`, dodaje `reportType=weekly` do kontekstu generacji i
+wymaga bloku `weeklySummary` w payloadzie.
+
 ## Vercel Cron
 
 Konfiguracja jest w:
@@ -40,6 +50,14 @@ Sa dwa kandydackie uruchomienia UTC:
 Powod: 08:00 czasu polskiego wypada o 06:00 UTC latem i 07:00 UTC zima.
 Endpoint ma guard czasu warszawskiego, wiec tylko jedno z tych wywolan przejdzie
 danego dnia.
+
+Dla sobotniego podsumowania sa dwa dodatkowe kandydackie uruchomienia UTC:
+
+- `0 7 * * 6`
+- `0 8 * * 6`
+
+Powod jest ten sam: 09:00 czasu polskiego wypada o 07:00 UTC latem i 08:00 UTC
+zima.
 
 ## Env na Vercel
 
@@ -61,6 +79,8 @@ US100_REVIEW_EMAILS=<email-1,email-2>
 SUPABASE_ANON_KEY=<supabase-anon-key>
 US100_BUDGET_MAX_REQUESTS=30
 US100_BUDGET_NEWS_RSS_ENABLED=true
+US100_WEEKLY_SUMMARY_ENABLED=true
+US100_WEEKLY_SUMMARY_MIN_SOURCES=8
 FRED_API_KEY=<optional-free-fred-api-key>
 ```
 
@@ -84,6 +104,11 @@ wersje PL, bez RSS news, z mniejsza liczba zapytan i limitem OpenAI ustawionym
 tak, zeby funkcja zdazyla zapisac wynik albo blad przed timeoutem Vercel.
 Budget collector pobiera zrodla rownolegle, zeby wiele wolnych odpowiedzi z
 zewnetrznych serwisow nie blokowalo calego uruchomienia sekwencyjnie.
+
+Sobotnie podsumowanie tezy short uzywa tej samej formulacji zrodel co briefing
+codzienny: darmowe dane dzienne Stooq/FRED/RSS/news, bez realtime market data i
+bez bezposredniego odwolania do XTB. Blok `weeklySummary` syntetyzuje ostatnie
+pieć sesji przez pryzmat tezy short.
 
 W porannym cyklu produkcyjnym model jezykowy jest parowany: PL powstaje jako
 wersja bazowa z evidence packa, a EN jako tlumaczenie tej samej struktury,
@@ -174,6 +199,20 @@ curl \
   "https://<domain>/api/cron/morning-brew?force=1&date=2026-08-13&locales=pl"
 ```
 
+Sobotni raport lokalnie:
+
+```bash
+curl "http://127.0.0.1:3000/api/cron/weekly-summary?force=1&date=2026-08-15&locales=pl"
+```
+
+Production:
+
+```bash
+curl \
+  -H "Authorization: Bearer $CRON_SECRET" \
+  "https://<domain>/api/cron/weekly-summary?force=1&date=2026-08-15&locales=pl"
+```
+
 ## Status
 
 - Endpoint cron jest gotowy.
@@ -190,3 +229,5 @@ curl \
   `OPENAI_MAX_OUTPUT_TOKENS`.
 - Budget Research Pipeline jest dostepny przez `US100_RESEARCH_PROVIDER=budget`.
   Uzywa low-cost daily data i nie pobiera real-time market data.
+- Sobotni weekly summary jest wlaczany przez `US100_WEEKLY_SUMMARY_ENABLED=true`
+  i uzywa osobnego idempotency key `weekly-summary:<date>:<locale>`.

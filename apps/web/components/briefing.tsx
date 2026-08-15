@@ -27,6 +27,7 @@ export function BriefingView({ briefing }: BriefingViewProps) {
       scorecard: "Scorecard tezy short",
       unknownPublisher: "Nieznany wydawca",
       verdict: "Werdykt",
+      weekly: "Tygodniowe podsumowanie tezy short",
       why: "Dlaczego to ma znaczenie"
     },
     en: {
@@ -38,6 +39,7 @@ export function BriefingView({ briefing }: BriefingViewProps) {
       scorecard: "Short thesis scorecard",
       unknownPublisher: "Unknown publisher",
       verdict: "Verdict",
+      weekly: "Weekly short thesis summary",
       why: "Why it matters"
     }
   }[locale];
@@ -83,6 +85,58 @@ export function BriefingView({ briefing }: BriefingViewProps) {
       </section>
 
       <SignalDashboard items={sectionSignals} locale={locale} />
+
+      {briefing.weeklySummary ? (
+        <section className="weekly-summary" aria-labelledby="weekly-summary-title">
+          <div className="weekly-summary__header">
+            <div>
+              <p className="eyebrow">
+                {copy.weekly} /{" "}
+                {formatDate(briefing.weeklySummary.periodStart, locale)} -{" "}
+                {formatDate(briefing.weeklySummary.periodEnd, locale)}
+              </p>
+              <h2 id="weekly-summary-title">{briefing.weeklySummary.title}</h2>
+            </div>
+            <span className="tone" data-impact={briefing.weeklySummary.verdict.stance}>
+              {impactLabel(briefing.weeklySummary.verdict.stance, locale)}
+            </span>
+          </div>
+          <p>{briefing.weeklySummary.verdict.summary}</p>
+          <div className="why">
+            <strong>{copy.why}</strong>
+            <p>{briefing.weeklySummary.verdict.whyItMatters}</p>
+          </div>
+          <div className="weekly-summary__grid">
+            <div>
+              <h3>{copy.changed}</h3>
+              <ul className="watch-items">
+                {briefing.weeklySummary.keyChanges.map((item) => (
+                  <li key={watchItemKey(item)}>
+                    <strong>{item.label}</strong>
+                    <p>{item.trigger}</p>
+                    <p>{item.whyItMatters}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h3>{copy.scorecard}</h3>
+              <ul className="scorecard-list">
+                {briefing.weeklySummary.thesisSignals.map((item) => (
+                  <li key={item.factor}>
+                    <span className="tone" data-impact={item.signal}>
+                      {impactLabel(item.signal, locale)}
+                    </span>
+                    <strong>{item.factor}</strong>
+                    <p>{item.observation}</p>
+                    <p>{item.whyItMatters}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       <div className="section-grid">
         {orderedSections(briefing).map(({ id, section }, index) => (

@@ -32,6 +32,8 @@ export type WarsawRunWindow = {
   date: string;
   hour: number;
   isWeekday: boolean;
+  isSaturday: boolean;
+  reportType: "daily" | "weekly";
   shouldRun: boolean;
   weekday: string;
 };
@@ -43,6 +45,7 @@ export type MorningBrewAutomationOptions = {
   locales?: AppLocale[];
   minEvidenceSources?: number;
   now?: Date;
+  reportType?: "daily" | "weekly";
   runSource?: string;
   slugSuffix?: string;
 };
@@ -91,8 +94,29 @@ export function getWarsawRunWindow(now: Date = new Date()): WarsawRunWindow {
   return {
     date: `${year}-${month}-${day}`,
     hour,
+    isSaturday: weekday === "Sat",
     isWeekday,
+    reportType: "daily",
     shouldRun: isWeekday && hour === 8,
+    weekday
+  };
+}
+
+export function getWarsawWeeklyRunWindow(now: Date = new Date()): WarsawRunWindow {
+  const weekday = warsawDatePart(now, "weekday");
+  const hour = Number(warsawDatePart(now, "hour"));
+  const year = warsawDatePart(now, "year");
+  const month = warsawDatePart(now, "month");
+  const day = warsawDatePart(now, "day");
+  const isSaturday = weekday === "Sat";
+
+  return {
+    date: `${year}-${month}-${day}`,
+    hour,
+    isSaturday,
+    isWeekday: weekdayValues.has(weekday),
+    reportType: "weekly",
+    shouldRun: isSaturday && hour === 9,
     weekday
   };
 }
@@ -109,6 +133,11 @@ function parseLocales(value: string | undefined): AppLocale[] {
 
 function targetStatusFromEnv(env: AutomationEnv): Extract<MorningBrew["status"], "draft" | "published"> {
   return env.US100_GENERATION_TARGET_STATUS === "published" ? "published" : "draft";
+}
+
+function positiveInteger(value: string | undefined, fallback: number): number {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
 function createGeneratorFromEnv(env: AutomationEnv): BriefingGenerator {
@@ -212,18 +241,39 @@ export async function runMorningBrewAutomation(
   assertAutomationEnv(env);
 
   const now = options.now ?? new Date();
-  const window = getWarsawRunWindow(now);
+  const reportType = options.reportType ?? "daily";
+  const window =
+    reportType === "weekly" ? getWarsawWeeklyRunWindow(now) : getWarsawRunWindow(now);
   const force = options.force ?? false;
   const date = options.date ?? window.date;
   const locales = options.locales ?? parseLocales(env.US100_CRON_LOCALES);
-  const runSource = options.runSource ?? "vercel-cron";
+  const runSource = options.runSource ?? (reportType === "weekly" ? "weekly-cron" : "vercel-cron");
+  const minEvidenceSources =
+    reportType === "weekly"
+      ? options.minEvidenceSources ??
+        positiveInteger(env.US100_WEEKLY_SUMMARY_MIN_SOURCES, 8)
+      : options.minEvidenceSources;
+
+  if (reportType === "weekly" && env.US100_WEEKLY_SUMMARY_ENABLED !== "true") {
+    return {
+      date,
+      force,
+      locales: [],
+      skippedReason: "Weekly summary is disabled by US100_WEEKLY_SUMMARY_ENABLED.",
+      status: "skipped",
+      window
+    };
+  }
 
   if (!force && !window.shouldRun) {
     return {
       date,
       force,
       locales: [],
-      skippedReason: "Not the 08:00 Europe/Warsaw weekday run window.",
+      skippedReason:
+        reportType === "weekly"
+          ? "Not the 09:00 Europe/Warsaw Saturday run window."
+          : "Not the 08:00 Europe/Warsaw weekday run window.",
       status: "skipped",
       window
     };
@@ -241,9 +291,10 @@ export async function runMorningBrewAutomation(
   let polishSourceBriefing: MorningBrew | null = null;
 
   for (const locale of pipelineLocales) {
+    const idempotencyPrefix = reportType === "weekly" ? "weekly-summary" : "morning-brew";
     const idempotencyKey = options.idempotencyScope
-      ? `morning-brew:${date}:${locale}:${options.idempotencyScope}`
-      : `morning-brew:${date}:${locale}`;
+      ? `${idempotencyPrefix}:${date}:${locale}:${options.idempotencyScope}`
+      : `${idempotencyPrefix}:${date}:${locale}`;
     const claim = await researchRunRepository.claimResearchRun({
       idempotencyKey,
       locale,
@@ -272,8 +323,9 @@ export async function runMorningBrewAutomation(
     const result = await pipeline.run({
       date,
       locale: locale satisfies Locale,
-      minEvidenceSources: options.minEvidenceSources,
+      minEvidenceSources,
       now,
+      reportType,
       runId: claim.run.id,
       slugSuffix: options.slugSuffix,
       targetStatus: targetStatusFromEnv(env)
@@ -289,6 +341,7 @@ export async function runMorningBrewAutomation(
           evidenceSources: result.evidencePack.sources.length,
           idempotencyScope: options.idempotencyScope ?? "cron",
           issues: result.quality.issues,
+          reportType,
           runSource,
           slug: result.briefing.slug,
           snapshotErrors: snapshotErrors(result.evidencePack.snapshots),
@@ -315,6 +368,7 @@ export async function runMorningBrewAutomation(
         evidenceSources: result.evidencePack?.sources.length ?? null,
         idempotencyScope: options.idempotencyScope ?? "cron",
         issues: result.quality.issues,
+        reportType,
         runSource,
         snapshotErrors: result.evidencePack ? snapshotErrors(result.evidencePack.snapshots) : [],
         sourceBreakdown: result.evidencePack ? sourceBreakdown(result.evidencePack.sources) : null,
@@ -333,9 +387,10 @@ export async function runMorningBrewAutomation(
 
   if (translateEnglishFromPolish) {
     const locale = "en" satisfies AppLocale;
+    const idempotencyPrefix = reportType === "weekly" ? "weekly-summary" : "morning-brew";
     const idempotencyKey = options.idempotencyScope
-      ? `morning-brew:${date}:${locale}:${options.idempotencyScope}`
-      : `morning-brew:${date}:${locale}`;
+      ? `${idempotencyPrefix}:${date}:${locale}:${options.idempotencyScope}`
+      : `${idempotencyPrefix}:${date}:${locale}`;
     const claim = await researchRunRepository.claimResearchRun({
       idempotencyKey,
       locale,
@@ -358,6 +413,7 @@ export async function runMorningBrewAutomation(
         errorMessage: "EN translation skipped because the PL source briefing was not generated.",
         metrics: {
           idempotencyScope: options.idempotencyScope ?? "cron",
+          reportType,
           runSource,
           translatedFromLocale: "pl"
         },
@@ -391,6 +447,7 @@ export async function runMorningBrewAutomation(
           metrics: {
             evidenceSources: savedBriefing.sources.length,
             idempotencyScope: options.idempotencyScope ?? "cron",
+            reportType,
             runSource,
             slug: savedBriefing.slug,
             sourceBreakdown: sourceBreakdown(savedBriefing.sources),
@@ -414,6 +471,7 @@ export async function runMorningBrewAutomation(
           errorMessage,
           metrics: {
             idempotencyScope: options.idempotencyScope ?? "cron",
+            reportType,
             runSource,
             timingsMs,
             translatedFromLocale: "pl",

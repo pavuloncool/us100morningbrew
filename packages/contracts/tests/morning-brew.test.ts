@@ -91,7 +91,8 @@ const sample = {
       url: "https://example.com/fixture",
       observedAt: "2026-08-13T06:00:00.000Z"
     }
-  ]
+  ],
+  weeklySummary: null
 };
 
 describe("MorningBrewSchema", () => {
@@ -113,5 +114,47 @@ describe("MorningBrewSchema", () => {
 
   it("accepts English as a publication locale", () => {
     expect(MorningBrewSchema.parse({ ...sample, language: "en" }).language).toBe("en");
+  });
+
+  it("defaults missing weekly summaries to null for older payloads", () => {
+    const { weeklySummary: _weeklySummary, ...legacySample } = sample;
+    expect(MorningBrewSchema.parse(legacySample).weeklySummary).toBeNull();
+  });
+
+  it("accepts a weekly short thesis summary", () => {
+    const parsed = MorningBrewSchema.parse({
+      ...sample,
+      weeklySummary: {
+        evidence: [{ label: "Five sessions", value: "Index up while breadth lagged.", sourceIds: ["fixture"] }],
+        keyChanges: [
+          {
+            label: "Breadth",
+            trigger: "Participation lagged the index over the week.",
+            whyItMatters: "A rally with weak participation is easier to reverse when leaders stop absorbing supply."
+          }
+        ],
+        levelsToWatch: [
+          {
+            label: "Weekly range",
+            trigger: "Breakout or failed continuation around the five-session range.",
+            whyItMatters: "The weekly range gives a cleaner reference for whether sellers can regain control."
+          }
+        ],
+        periodEnd: "2026-08-13",
+        periodStart: "2026-08-09",
+        thesisSignals: [
+          {
+            factor: "Price",
+            observation: "The index stayed resilient.",
+            signal: "short_thesis_weakened",
+            whyItMatters: "A resilient index means the short thesis still needs price confirmation."
+          }
+        ],
+        title: "Weekly short thesis summary",
+        verdict: sample.verdict
+      }
+    });
+
+    expect(parsed.weeklySummary?.periodStart).toBe("2026-08-09");
   });
 });

@@ -11,6 +11,7 @@ export type ResearchRunContext = {
   locale: Locale;
   minEvidenceSources?: number;
   now?: Date;
+  reportType?: "daily" | "weekly";
   runId?: string;
   slugSuffix?: string;
   targetStatus?: Extract<MorningBrew["status"], "draft" | "published">;
@@ -189,6 +190,13 @@ function withSlugSuffix(slug: string, suffix: string | undefined): string {
   return slug.endsWith(`-${suffix}`) ? slug : `${slug}-${suffix}`;
 }
 
+function canonicalSlug(rawSlug: string, context: ResearchRunContext): string {
+  if (context.reportType === "weekly") {
+    return `${context.date}-us100-weekly-short-thesis`;
+  }
+  return rawSlug;
+}
+
 function normalizeGeneratedBriefing(
   rawBriefing: unknown,
   context: ResearchRunContext,
@@ -201,7 +209,7 @@ function normalizeGeneratedBriefing(
   if (!context.targetStatus) {
     return MorningBrewSchema.parse({
       ...parsed,
-      slug: withSlugSuffix(parsed.slug, context.slugSuffix)
+      slug: withSlugSuffix(canonicalSlug(parsed.slug, context), context.slugSuffix)
     });
   }
 
@@ -209,7 +217,7 @@ function normalizeGeneratedBriefing(
     ...parsed,
     publishedAt:
       context.targetStatus === "published" ? parsed.publishedAt ?? isoNow(context) : null,
-    slug: withSlugSuffix(parsed.slug, context.slugSuffix),
+    slug: withSlugSuffix(canonicalSlug(parsed.slug, context), context.slugSuffix),
     status: context.targetStatus
   });
 }
@@ -240,7 +248,15 @@ function whyTexts(briefing: MorningBrew): string[] {
     ...Object.values(briefing.sections).map((section) => section.whyItMatters),
     ...briefing.thesisScorecard.map((item) => item.whyItMatters),
     ...briefing.whatChanged.map((item) => item.whyItMatters),
-    ...briefing.levelsToWatch.map((item) => item.whyItMatters)
+    ...briefing.levelsToWatch.map((item) => item.whyItMatters),
+    ...(briefing.weeklySummary
+      ? [
+          briefing.weeklySummary.verdict.whyItMatters,
+          ...briefing.weeklySummary.keyChanges.map((item) => item.whyItMatters),
+          ...briefing.weeklySummary.thesisSignals.map((item) => item.whyItMatters),
+          ...briefing.weeklySummary.levelsToWatch.map((item) => item.whyItMatters)
+        ]
+      : [])
   ];
 }
 
@@ -350,6 +366,30 @@ export const defaultQualityGates: QualityGate[] = [
             message:
               "Briefing should include both strengthening and weakening evidence unless the market signal is genuinely one-sided.",
             severity: "warning"
+          }
+        ];
+      }
+      return [];
+    }
+  },
+  {
+    id: "weekly_summary_presence",
+    run(briefing, input) {
+      if (input.context.reportType === "weekly" && briefing.weeklySummary === null) {
+        return [
+          {
+            gateId: "weekly_summary_presence",
+            message: "Weekly report runs must include weeklySummary.",
+            severity: "error" as const
+          }
+        ];
+      }
+      if ((input.context.reportType ?? "daily") === "daily" && briefing.weeklySummary !== null) {
+        return [
+          {
+            gateId: "weekly_summary_presence",
+            message: "Daily report runs must not include weeklySummary.",
+            severity: "error" as const
           }
         ];
       }

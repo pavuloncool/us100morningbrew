@@ -67,6 +67,12 @@ function signalLabel(locale: Locale, label: "price" | "breadth" | "volatility"):
   return labels[locale][label];
 }
 
+function fixtureWeekStart(context: ResearchRunContext): string {
+  const value = new Date(`${context.date}T12:00:00.000Z`);
+  value.setUTCDate(value.getUTCDate() - 4);
+  return value.toISOString().slice(0, 10);
+}
+
 export function createFixtureAnalyzer(): SignalAnalyzer {
   return {
     async analyze(evidencePack, context) {
@@ -300,15 +306,97 @@ export function createFixtureGenerator(
               whyItMatters:
                 input.context.locale === "pl"
                   ? "Indeks może pozostawać wysoko, gdy pod powierzchnią narasta słabość, więc breadth jest czystszym testem."
-                  : "The index can stay high while weakness builds underneath, so breadth is a cleaner test."
+                : "The index can stay high while weakness builds underneath, so breadth is a cleaner test."
             }
-          ]
+          ],
+          weeklySummary:
+            input.context.reportType === "weekly"
+              ? {
+                  evidence: [
+                    {
+                      label:
+                        input.context.locale === "pl"
+                          ? "Tygodniowy obraz rynku"
+                          : "Weekly market picture",
+                      sourceIds: [source.id],
+                      value: input.analysis.summary
+                    }
+                  ],
+                  keyChanges: [
+                    {
+                      label:
+                        input.context.locale === "pl"
+                          ? "Teza short pozostaje zależna od szerokości"
+                          : "The short thesis still depends on breadth",
+                      trigger:
+                        input.context.locale === "pl"
+                          ? "Tygodniowa siła indeksu bez szerokiego potwierdzenia liderów."
+                          : "Weekly index strength without broad confirmation from leaders.",
+                      whyItMatters:
+                        input.context.locale === "pl"
+                          ? "Sobotnie podsumowanie ma oddzielić sam poziom indeksu od tego, czy rynek faktycznie rozszerza apetyt na ryzyko."
+                          : "The Saturday summary separates the index level from whether the market is actually broadening risk appetite."
+                    }
+                  ],
+                  levelsToWatch: [
+                    {
+                      label:
+                        input.context.locale === "pl"
+                          ? "Zakres z ostatnich pięciu sesji"
+                          : "Latest five-session range",
+                      trigger:
+                        input.context.locale === "pl"
+                          ? "Wybicie albo utrata zakresu z potwierdzeniem szerokości."
+                          : "Breakout or loss of the range with breadth confirmation.",
+                      whyItMatters:
+                        input.context.locale === "pl"
+                          ? "Tygodniowy zakres porządkuje ryzyko: wybicie osłabi short, a nieudana kontynuacja po słabej szerokości go wzmocni."
+                          : "The weekly range organizes risk: a breakout weakens the short, while failed continuation after weak breadth strengthens it."
+                    }
+                  ],
+                  periodEnd: input.context.date,
+                  periodStart: fixtureWeekStart(input.context),
+                  thesisSignals: [
+                    {
+                      factor: input.context.locale === "pl" ? "Szerokość" : "Breadth",
+                      observation:
+                        input.context.locale === "pl"
+                          ? "Partycypacja pozostaje głównym tygodniowym testem tezy short."
+                          : "Participation remains the main weekly test for the short thesis.",
+                      signal: "short_thesis_strengthened",
+                      whyItMatters:
+                        input.context.locale === "pl"
+                          ? "Jeżeli wzrost nadal opiera się na małej grupie liderów, rynek jest bardziej podatny na gwałtowną zmianę sentymentu."
+                          : "If gains still rely on a small leader group, the market is more exposed to a fast sentiment reversal."
+                    }
+                  ],
+                  title:
+                    input.context.locale === "pl"
+                      ? "Tygodniowe podsumowanie tezy short"
+                      : "Weekly short thesis summary",
+                  verdict: {
+                    conviction: "medium",
+                    stance: "mixed",
+                    summary:
+                      input.context.locale === "pl"
+                        ? "Tydzień nie daje czystego potwierdzenia short, ale breadth nadal nie usuwa ryzyka."
+                        : "The week does not cleanly confirm the short, but breadth still does not remove the risk.",
+                    whyItMatters:
+                      input.context.locale === "pl"
+                        ? "Dla tezy short ważniejsza od jednego zamknięcia jest trwałość popytu pod powierzchnią indeksu przez kilka sesji."
+                        : "For the short thesis, durable demand beneath the index across several sessions matters more than one close."
+                  }
+                }
+              : null
         } satisfies MorningBrew);
       return {
         ...base,
         date: input.context.date,
         language: override ? base.language : input.context.locale,
-        slug: `${input.context.date}-us100-morning-brew`,
+        slug:
+          input.context.reportType === "weekly"
+            ? `${input.context.date}-us100-weekly-short-thesis`
+            : `${input.context.date}-us100-morning-brew`,
         sources: input.evidencePack.sources.map((source) => ({
           id: source.id,
           observedAt: source.observedAt,

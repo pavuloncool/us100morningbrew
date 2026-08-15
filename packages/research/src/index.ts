@@ -10,7 +10,8 @@ const sharedMeta = {
   date: "2026-08-13",
   slug: "2026-08-13-us100-morning-brew",
   status: "published",
-  publishedAt: "2026-08-13T06:00:00.000Z"
+  publishedAt: "2026-08-13T06:00:00.000Z",
+  weeklySummary: null
 } as const;
 
 const fixtureBriefings = [
