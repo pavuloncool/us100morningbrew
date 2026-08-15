@@ -120,6 +120,39 @@ export async function listBriefings(locale: Locale): Promise<MorningBrew[]> {
   return briefingRepository.listBriefings(locale);
 }
 
+export type BriefingReportType = "daily" | "weekly";
+export type BriefingArchiveFilter = BriefingReportType | "all";
+
+export function briefingReportType(briefing: MorningBrew): BriefingReportType {
+  return briefing.weeklySummary ? "weekly" : "daily";
+}
+
+export function isBriefingArchiveFilter(value: string): value is BriefingArchiveFilter {
+  return value === "all" || value === "daily" || value === "weekly";
+}
+
+export function canonicalBriefingSlug(date: string, reportType: BriefingReportType): string {
+  return reportType === "weekly"
+    ? `${date}-us100-weekly-short-thesis`
+    : `${date}-us100-morning-brew`;
+}
+
+export async function listBriefingsByReportType(
+  locale: Locale,
+  reportType: BriefingArchiveFilter
+): Promise<MorningBrew[]> {
+  const briefings = await listBriefings(locale);
+  if (reportType === "all") {
+    return briefings;
+  }
+  return briefings.filter((briefing) => briefingReportType(briefing) === reportType);
+}
+
+export async function getLatestDailyBriefing(locale: Locale): Promise<MorningBrew | null> {
+  const [briefing] = await listBriefingsByReportType(locale, "daily");
+  return briefing ?? null;
+}
+
 export async function listBriefingRecords(
   locale: Locale,
   status: BriefingStatus | "any" = "published"
@@ -210,19 +243,37 @@ export const uiCopy = {
     archive: "Archiwum",
     archiveDescription:
       "Każdy wpis jest renderowany z danych strukturalnych, z permalinkiem i kompletem sekcji wymaganych przez produkt.",
+    archiveFilterAll: "Wszystkie",
+    archiveFilterDaily: "Daily",
+    archiveFilterWeekly: "Weekly",
     archiveTitle: "Wszystkie briefingi US100 Morning Brew",
+    dailyReport: "Daily",
     latest: "Najnowszy",
     mainNavigation: "Główne",
-    skipToContent: "Przejdź do treści"
+    reportOfWeek: "Raport z tygodnia",
+    skipToContent: "Przejdź do treści",
+    weeklyDescription:
+      "Sobotnie raporty syntetyzują ostatni tydzień rynku przez pryzmat tezy short.",
+    weeklyReport: "Weekly",
+    weeklyTitle: "Raporty z tygodnia"
   },
   en: {
     archive: "Archive",
     archiveDescription:
       "Every briefing is rendered from structured data, with a permalink and the full set of product-required sections.",
+    archiveFilterAll: "All",
+    archiveFilterDaily: "Daily",
+    archiveFilterWeekly: "Weekly",
     archiveTitle: "All US100 Morning Brew briefings",
+    dailyReport: "Daily",
     latest: "Latest",
     mainNavigation: "Main",
-    skipToContent: "Skip to content"
+    reportOfWeek: "Weekly report",
+    skipToContent: "Skip to content",
+    weeklyDescription:
+      "Saturday reports summarize the latest market week through the short thesis.",
+    weeklyReport: "Weekly",
+    weeklyTitle: "Weekly reports"
   }
 } as const;
 

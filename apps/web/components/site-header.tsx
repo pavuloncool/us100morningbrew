@@ -34,6 +34,7 @@ export function SiteHeader() {
       <nav aria-label={copy.mainNavigation}>
         <Link href={`/${locale}`}>{copy.latest}</Link>
         <Link href={`/${locale}/archive`}>{copy.archive}</Link>
+        <Link href={`/${locale}/weekly`}>{copy.reportOfWeek}</Link>
       </nav>
       <LanguageSwitch />
     </header>

@@ -162,6 +162,9 @@ W `/review` sa dwa przyciski reczne:
 - `Szybki test PL`: sprawdza przeplyw przy ograniczonym evidence packu.
 - `Pelny research PL`: generuje draft na podstawie pelnego modelu zrodel budget
   pipeline.
+- `Tygodniowy research PL+EN`: wymusza pelny sobotni weekly run, tworzy draft PL
+  na podstawie pelnego researchu i draft EN przez tlumaczenie tej samej
+  struktury. Uzywa kanonicznego sluga `YYYY-MM-DD-us100-weekly-short-thesis`.
 
 Jezeli poprzednie uruchomienie zostalo przerwane przez timeout Vercel i zostalo
 w statusie `running`, system po 5 minutach traktuje je jako przeterminowane i
@@ -231,3 +234,7 @@ curl \
   Uzywa low-cost daily data i nie pobiera real-time market data.
 - Sobotni weekly summary jest wlaczany przez `US100_WEEKLY_SUMMARY_ENABLED=true`
   i uzywa osobnego idempotency key `weekly-summary:<date>:<locale>`.
+- Publiczny navbar ma osobna zakladke `Raport z tygodnia` / `Weekly report`.
+  Raporty tygodniowe sa listowane pod `/{locale}/weekly`, a ich kanoniczne
+  permalinki pozostaja w `/{locale}/briefings/{date}-us100-weekly-short-thesis`.
+- Archiwum `/{locale}/archive` obsluguje filtr `type=all|daily|weekly`.

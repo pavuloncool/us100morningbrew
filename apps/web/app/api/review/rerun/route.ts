@@ -2,7 +2,12 @@ import { NextRequest } from "next/server";
 
 import { runMorningBrewAutomation } from "@/lib/automation";
 import { isAppLocale, type AppLocale } from "@/lib/briefings";
-import { createRerunEnv, parseRerunMode, rerunOptions } from "@/lib/review-rerun";
+import {
+  createRerunEnv,
+  parseRerunMode,
+  parseRerunReportType,
+  rerunOptions
+} from "@/lib/review-rerun";
 import {
   hasReviewAccess,
   reviewSessionCookieName,
@@ -14,6 +19,7 @@ export const maxDuration = 60;
 export const runtime = "nodejs";
 
 const defaultRerunLocales: AppLocale[] = ["pl"];
+const defaultWeeklyRerunLocales: AppLocale[] = ["pl", "en"];
 
 function redirectToReview(request: NextRequest, status: string, token: string | null): Response {
   const url = new URL("/review", request.url);
@@ -54,24 +60,29 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const locales =
+  const requestedLocales =
     parseLocales(formData?.get("locales")?.toString() ?? null) ??
-    parseLocales(typeof jsonData?.locales === "string" ? jsonData.locales : null) ??
-    defaultRerunLocales;
+    parseLocales(typeof jsonData?.locales === "string" ? jsonData.locales : null);
   const mode = parseRerunMode(
     formData?.get("mode")?.toString() ??
       (typeof jsonData?.mode === "string" ? jsonData.mode : null)
   );
+  const reportType = parseRerunReportType(
+    formData?.get("reportType")?.toString() ??
+      (typeof jsonData?.reportType === "string" ? jsonData.reportType : null)
+  );
+  const locales =
+    requestedLocales ?? (reportType === "weekly" ? defaultWeeklyRerunLocales : defaultRerunLocales);
 
   try {
-    const modeOptions = rerunOptions(mode);
+    const modeOptions = rerunOptions(mode, reportType);
     const result = await runMorningBrewAutomation(
       {
         force: true,
         locales,
         ...modeOptions
       },
-      createRerunEnv(mode)
+      createRerunEnv(mode, reportType)
     );
 
     if (formData) {

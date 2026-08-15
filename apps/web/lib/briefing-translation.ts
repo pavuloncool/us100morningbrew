@@ -6,10 +6,13 @@ import {
 } from "@us100/research";
 
 import {
+  briefingReportType,
+  canonicalBriefingSlug,
   getBriefingRepository,
   listBriefingRecords,
   publishBriefing,
-  saveBriefing
+  saveBriefing,
+  type BriefingReportType
 } from "./briefings";
 
 type TranslationEnv = Record<string, string | undefined>;
@@ -26,15 +29,24 @@ export type PublishEnglishTranslationOptions = {
   date?: string;
   env?: TranslationEnv;
   now?: Date;
+  reportType?: BriefingReportType;
   translator?: BriefingTranslator;
 };
 
 export function canonicalDailySlug(date: string): string {
-  return `${date}-us100-morning-brew`;
+  return canonicalBriefingSlug(date, "daily");
 }
 
-export function translationDraftSlug(date: string, targetLocale: Locale): string {
-  return `${canonicalDailySlug(date)}-${targetLocale}-translation`;
+export function canonicalWeeklySlug(date: string): string {
+  return canonicalBriefingSlug(date, "weekly");
+}
+
+export function translationDraftSlug(
+  date: string,
+  targetLocale: Locale,
+  reportType: BriefingReportType = "daily"
+): string {
+  return `${canonicalBriefingSlug(date, reportType)}-${targetLocale}-translation`;
 }
 
 export function createBriefingTranslatorFromEnv(
@@ -50,7 +62,12 @@ export function createBriefingTranslatorFromEnv(
           ...input.sourceBriefing,
           language: input.targetLocale,
           publishedAt: input.targetStatus === "draft" ? null : input.publishedAt ?? null,
-          slug: input.targetSlug ?? canonicalDailySlug(input.sourceBriefing.date),
+          slug:
+            input.targetSlug ??
+            canonicalBriefingSlug(
+              input.sourceBriefing.date,
+              briefingReportType(input.sourceBriefing)
+            ),
           status: input.targetStatus ?? "draft"
         };
       }
@@ -74,7 +91,9 @@ export async function translateBriefing(
     publishedAt: options.publishedAt ?? null,
     sourceBriefing,
     targetLocale,
-    targetSlug: options.slug ?? canonicalDailySlug(sourceBriefing.date),
+    targetSlug:
+      options.slug ??
+      canonicalBriefingSlug(sourceBriefing.date, briefingReportType(sourceBriefing)),
     targetStatus: options.status ?? "draft"
   });
 }
@@ -96,11 +115,12 @@ export async function publishEnglishTranslationFromLatestPolish(
   options: PublishEnglishTranslationOptions = {}
 ): Promise<MorningBrew> {
   const sourceBriefing = await getLatestPublishedPolishBriefing(options.date);
+  const reportType = options.reportType ?? briefingReportType(sourceBriefing);
   const now = options.now ?? new Date();
   const translatedDraft = await translateBriefing(sourceBriefing, "en", {
     env: options.env,
     publishedAt: null,
-    slug: translationDraftSlug(sourceBriefing.date, "en"),
+    slug: translationDraftSlug(sourceBriefing.date, "en", reportType),
     status: "draft",
     translator: options.translator
   });

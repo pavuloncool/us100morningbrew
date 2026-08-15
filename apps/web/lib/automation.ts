@@ -13,13 +13,13 @@ import {
 } from "@us100/research";
 
 import {
-  canonicalDailySlug,
   createBriefingTranslatorFromEnv,
   translationDraftSlug,
   translateBriefing
 } from "./briefing-translation";
 import {
   appLocales,
+  canonicalBriefingSlug,
   getBriefingRepository,
   getResearchRunRepository,
   isAppLocale,
@@ -433,8 +433,8 @@ export async function runMorningBrewAutomation(
         const translatedBriefing = await translateBriefing(polishSourceBriefing, "en", {
           env,
           slug: options.slugSuffix
-            ? `${translationDraftSlug(date, "en")}-${options.slugSuffix}`
-            : canonicalDailySlug(date),
+            ? `${translationDraftSlug(date, "en", reportType)}-${options.slugSuffix}`
+            : canonicalBriefingSlug(date, reportType),
           status: targetStatusFromEnv(env),
           translator: createBriefingTranslatorFromEnv(env)
         });

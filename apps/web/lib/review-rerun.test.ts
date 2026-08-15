@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { createRerunEnv, parseRerunMode, rerunOptions } from "./review-rerun";
+import {
+  createRerunEnv,
+  parseRerunMode,
+  parseRerunReportType,
+  rerunOptions
+} from "./review-rerun";
 
 describe("review rerun modes", () => {
   it("keeps the quick rerun source-limited", () => {
-    const env = createRerunEnv("quick", {
+    const env = createRerunEnv("quick", "daily", {
       US100_BUDGET_MAX_REQUESTS: "30",
       US100_BUDGET_NEWS_RSS_ENABLED: "true"
     });
@@ -14,7 +19,7 @@ describe("review rerun modes", () => {
   });
 
   it("uses the full budget source model for full reruns", () => {
-    const env = createRerunEnv("full", {
+    const env = createRerunEnv("full", "daily", {
       OPENAI_MAX_OUTPUT_TOKENS: "6500",
       US100_BUDGET_MAX_REQUESTS: "30",
       US100_BUDGET_NEWS_RSS_ENABLED: "true",
@@ -38,8 +43,28 @@ describe("review rerun modes", () => {
     });
   });
 
+  it("uses canonical weekly settings for manual full weekly runs", () => {
+    const env = createRerunEnv("full", "weekly", {
+      US100_WEEKLY_SUMMARY_ENABLED: "false"
+    });
+    const options = rerunOptions("full", "weekly", {
+      US100_WEEKLY_SUMMARY_MIN_SOURCES: "9"
+    });
+
+    expect(env.US100_WEEKLY_SUMMARY_ENABLED).toBe("true");
+    expect(options).toMatchObject({
+      idempotencyScope: "manual-weekly-full",
+      minEvidenceSources: 9,
+      reportType: "weekly",
+      runSource: "review-weekly-full"
+    });
+    expect(options.slugSuffix).toBeUndefined();
+  });
+
   it("falls back to quick mode for unknown form values", () => {
     expect(parseRerunMode("full")).toBe("full");
     expect(parseRerunMode("unknown")).toBe("quick");
+    expect(parseRerunReportType("weekly")).toBe("weekly");
+    expect(parseRerunReportType("unknown")).toBe("daily");
   });
 });

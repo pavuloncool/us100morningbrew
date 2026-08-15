@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { BriefingView } from "@/components/briefing";
-import { getLatestBriefing, isAppLocale } from "@/lib/briefings";
+import { getLatestDailyBriefing, isAppLocale } from "@/lib/briefings";
 
 type LocalePageProps = {
   params: Promise<{
@@ -15,7 +15,7 @@ export default async function LocaleHomePage({ params }: LocalePageProps) {
     notFound();
   }
 
-  const briefing = await getLatestBriefing(locale);
+  const briefing = await getLatestDailyBriefing(locale);
   if (!briefing) {
     notFound();
   }

@@ -79,6 +79,8 @@ function formatRunDiagnostics(metrics: Record<string, unknown>): string | null {
 
   if (metrics.runSource === "review-full") {
     parts.push("tryb: pełny research");
+  } else if (metrics.runSource === "review-weekly-full") {
+    parts.push("tryb: tygodniowy research");
   } else if (metrics.runSource === "review-quick") {
     parts.push("tryb: szybki test");
   } else if (metrics.runSource === "vercel-cron") {
@@ -231,6 +233,15 @@ export default async function ReviewPage({ searchParams }: ReviewPageProps) {
             <input name="mode" type="hidden" value="full" />
             <button className="button-secondary" type="submit">
               Pełny research PL
+            </button>
+          </form>
+          <form action="/api/review/rerun" method="post">
+            {token ? <input name="token" type="hidden" value={token} /> : null}
+            <input name="locales" type="hidden" value="pl,en" />
+            <input name="mode" type="hidden" value="full" />
+            <input name="reportType" type="hidden" value="weekly" />
+            <button className="button-secondary" type="submit">
+              Tygodniowy research PL+EN
             </button>
           </form>
           <form action="/api/review/backfill-en" method="post">
