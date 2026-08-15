@@ -127,6 +127,10 @@ export function briefingReportType(briefing: MorningBrew): BriefingReportType {
   return briefing.weeklySummary ? "weekly" : "daily";
 }
 
+export function isBriefingReportType(value: string): value is BriefingReportType {
+  return value === "daily" || value === "weekly";
+}
+
 export function isBriefingArchiveFilter(value: string): value is BriefingArchiveFilter {
   return value === "all" || value === "daily" || value === "weekly";
 }

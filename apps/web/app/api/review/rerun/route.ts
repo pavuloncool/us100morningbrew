@@ -19,7 +19,7 @@ export const maxDuration = 60;
 export const runtime = "nodejs";
 
 const defaultRerunLocales: AppLocale[] = ["pl"];
-const defaultWeeklyRerunLocales: AppLocale[] = ["pl", "en"];
+const defaultWeeklyRerunLocales: AppLocale[] = ["pl"];
 
 function redirectToReview(request: NextRequest, status: string, token: string | null): Response {
   const url = new URL("/review", request.url);

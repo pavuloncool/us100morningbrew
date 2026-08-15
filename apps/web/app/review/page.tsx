@@ -237,11 +237,11 @@ export default async function ReviewPage({ searchParams }: ReviewPageProps) {
           </form>
           <form action="/api/review/rerun" method="post">
             {token ? <input name="token" type="hidden" value={token} /> : null}
-            <input name="locales" type="hidden" value="pl,en" />
+            <input name="locales" type="hidden" value="pl" />
             <input name="mode" type="hidden" value="full" />
             <input name="reportType" type="hidden" value="weekly" />
             <button className="button-secondary" type="submit">
-              Tygodniowy research PL+EN
+              Tygodniowy research PL
             </button>
           </form>
           <form action="/api/review/backfill-en" method="post">
@@ -250,11 +250,19 @@ export default async function ReviewPage({ searchParams }: ReviewPageProps) {
               Utwórz EN z opublikowanego PL
             </button>
           </form>
+          <form action="/api/review/backfill-en" method="post">
+            {token ? <input name="token" type="hidden" value={token} /> : null}
+            <input name="reportType" type="hidden" value="weekly" />
+            <button className="button-secondary" type="submit">
+              Utwórz weekly EN z opublikowanego PL
+            </button>
+          </form>
         </div>
         <p className="review-actions-note">
           Szybki test ogranicza źródła, żeby sprawdzić sam przepływ. Pełny research PL używa
           pełnego modelu źródeł budget pipeline: ceny, FRED i RSS/news, jeśli są skonfigurowane.
-          EN z opublikowanego PL tłumaczy zatwierdzoną publikację bez ponownego researchu.
+          EN z opublikowanego PL tłumaczy zatwierdzoną publikację bez ponownego researchu; weekly
+          EN robi to samo dla najnowszego opublikowanego raportu tygodniowego.
         </p>
       </section>
 

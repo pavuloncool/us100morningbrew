@@ -6,10 +6,15 @@ import {
   reviewSessionCookieName,
   reviewTokenFromAuthorization
 } from "@/lib/review-auth";
+import { isBriefingReportType } from "@/lib/briefings";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 export const runtime = "nodejs";
+
+function parseBackfillReportType(value: string | null | undefined) {
+  return value && isBriefingReportType(value) ? value : undefined;
+}
 
 function redirectToReview(request: NextRequest, status: string, token: string | null): Response {
   const url = new URL("/review", request.url);
@@ -40,9 +45,13 @@ export async function POST(request: NextRequest) {
   const date =
     formData?.get("date")?.toString() ??
     (typeof jsonData?.date === "string" ? jsonData.date : undefined);
+  const reportType = parseBackfillReportType(
+    formData?.get("reportType")?.toString() ??
+      (typeof jsonData?.reportType === "string" ? jsonData.reportType : undefined)
+  );
 
   try {
-    const briefing = await publishEnglishTranslationFromLatestPolish({ date });
+    const briefing = await publishEnglishTranslationFromLatestPolish({ date, reportType });
 
     if (formData) {
       return redirectToReview(request, "completed", token ?? null);

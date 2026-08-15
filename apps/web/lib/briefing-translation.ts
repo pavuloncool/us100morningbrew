@@ -98,23 +98,48 @@ export async function translateBriefing(
   });
 }
 
-async function getLatestPublishedPolishBriefing(date: string | undefined): Promise<MorningBrew> {
+export function selectPublishedPolishBriefing(
+  records: Awaited<ReturnType<typeof listBriefingRecords>>,
+  options: Pick<PublishEnglishTranslationOptions, "date" | "reportType"> = {}
+): MorningBrew | null {
+  const source = records.find((record) => {
+    if (options.date && record.briefing.date !== options.date) {
+      return false;
+    }
+    if (options.reportType && briefingReportType(record.briefing) !== options.reportType) {
+      return false;
+    }
+    return true;
+  });
+
+  return source?.briefing ?? null;
+}
+
+async function getLatestPublishedPolishBriefing(
+  options: Pick<PublishEnglishTranslationOptions, "date" | "reportType"> = {}
+): Promise<MorningBrew> {
   const records = await listBriefingRecords("pl", "published");
-  const source = date
-    ? records.find((record) => record.briefing.date === date)
-    : records[0];
+  const source = selectPublishedPolishBriefing(records, options);
 
   if (!source) {
-    throw new Error(date ? `No published PL briefing found for ${date}.` : "No published PL briefing found.");
+    const reportLabel = options.reportType ? ` ${options.reportType}` : "";
+    throw new Error(
+      options.date
+        ? `No published PL${reportLabel} briefing found for ${options.date}.`
+        : `No published PL${reportLabel} briefing found.`
+    );
   }
 
-  return source.briefing;
+  return source;
 }
 
 export async function publishEnglishTranslationFromLatestPolish(
   options: PublishEnglishTranslationOptions = {}
 ): Promise<MorningBrew> {
-  const sourceBriefing = await getLatestPublishedPolishBriefing(options.date);
+  const sourceBriefing = await getLatestPublishedPolishBriefing({
+    date: options.date,
+    reportType: options.reportType
+  });
   const reportType = options.reportType ?? briefingReportType(sourceBriefing);
   const now = options.now ?? new Date();
   const translatedDraft = await translateBriefing(sourceBriefing, "en", {
