@@ -86,7 +86,13 @@ describe("AI funding calculations", () => {
       treasuryYields: [{ date: "2026-08-18", source, tenor: "10Y", yield: 4.7 }]
     });
 
-    expect(dashboard.metrics.find((metric) => metric.label === "Orderbook coverage")?.current).toBe("N/A");
+    expect(dashboard.metrics.find((metric) => metric.id === "orderbook_coverage")?.current).toBe("N/A");
+    expect(dashboard.score.components.map((component) => component.id)).toEqual([
+      "credit_spread_trend",
+      "orderbook_coverage",
+      "new_issue_concession",
+      "capex_cashflow_pressure"
+    ]);
     expect(dashboard.score.availableMaxScore).toBe(3);
     expect(dashboard.score.state).toBe("insufficient_data");
   });

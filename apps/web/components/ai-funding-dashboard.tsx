@@ -1,5 +1,17 @@
-import type { AiFundingDashboard, AiFundingStressState } from "@us100/contracts";
+import type { AiFundingDashboard } from "@us100/contracts";
 
+import {
+  aiFundingCompletenessLabel,
+  aiFundingComponentLabel,
+  aiFundingConfidenceLabel,
+  aiFundingFcfTrendLabel,
+  aiFundingInterpretation,
+  aiFundingMetricLabel,
+  aiFundingSourceTitle,
+  aiFundingSourceTypeLabel,
+  aiFundingStateLabel,
+  aiFundingUnavailableReason
+} from "@/lib/ai-funding-i18n";
 import { formatDate, type AppLocale } from "@/lib/briefings";
 
 type AiFundingDashboardViewProps = {
@@ -13,22 +25,22 @@ const copy = {
     asOf: "Stan na",
     capex: "Capex",
     concession: "NIC",
-    coverage: "Coverage",
-    creditSpread: "Spread",
+    coverage: "Popyt",
+    creditSpread: "Spread kredytowy",
     dataQuality: "Jakość danych",
     emptyAlerts: "Brak aktywnych alertów w publicznym zestawie danych.",
     events: "Następne wydarzenia",
     fcf: "FCF",
-    headline: "AI Funding Monitor",
+    headline: "Monitor finansowania AI",
     issuerMetrics: "Emitenci",
     month: "1M",
     noEvents: "Brak nadchodzących wydarzeń w publicznym snapshocie.",
-    note: "Funding stress ≠ timing signal",
+    note: "Stres finansowania ≠ sygnał timingowy",
     now: "Teraz",
-    score: "AI Funding Stress",
+    score: "Stres finansowania AI",
     source: "Źródło",
-    subtitle:
-      "Public-only early-warning layer for AI/data-center financing pressure in hyperscalers.",
+    sourcesAria: "Aktualny stan monitora finansowania AI",
+    subtitle: "Publiczna warstwa wczesnego ostrzegania przed presją finansowania AI/data-center u hyperscalerów.",
     threeMonths: "3M",
     unavailable: "Niedostępne publicznie",
     watchFields: "Do sprawdzenia"
@@ -52,6 +64,7 @@ const copy = {
     now: "Now",
     score: "AI Funding Stress",
     source: "Source",
+    sourcesAria: "AI funding monitor current state",
     subtitle:
       "Public-only early-warning layer for AI/data-center financing pressure in hyperscalers.",
     threeMonths: "3M",
@@ -59,26 +72,6 @@ const copy = {
     watchFields: "Check"
   }
 } as const;
-
-function stateLabel(state: AiFundingStressState, locale: AppLocale): string {
-  const labels = {
-    pl: {
-      high: "HIGH",
-      insufficient_data: "INSUFFICIENT DATA",
-      low: "LOW",
-      moderate: "MODERATE",
-      severe: "SEVERE"
-    },
-    en: {
-      high: "HIGH",
-      insufficient_data: "INSUFFICIENT DATA",
-      low: "LOW",
-      moderate: "MODERATE",
-      severe: "SEVERE"
-    }
-  } as const;
-  return labels[locale][state];
-}
 
 function formatTimestamp(value: string, locale: AppLocale): string {
   return new Intl.DateTimeFormat(locale === "pl" ? "pl-PL" : "en-GB", {
@@ -103,17 +96,17 @@ export function AiFundingDashboardView({ dashboard, locale }: AiFundingDashboard
           <strong>
             {dashboard.score.totalScore} / {dashboard.score.availableMaxScore || dashboard.score.fullMaxScore}
           </strong>
-          <b>{stateLabel(dashboard.score.state, locale)}</b>
+          <b>{aiFundingStateLabel(dashboard.score.state, locale)}</b>
           <small>{t.note}</small>
         </aside>
       </section>
 
       <section className="ai-funding-interpretation" aria-label={t.note}>
-        <p>{dashboard.interpretation}</p>
+        <p>{aiFundingInterpretation(dashboard.score.state, dashboard.interpretation, locale)}</p>
         <span>{`${t.asOf}: ${formatTimestamp(dashboard.asOf, locale)}`}</span>
       </section>
 
-      <section className="ai-funding-matrix" aria-label="AI funding monitor current state">
+      <section className="ai-funding-matrix" aria-label={t.sourcesAria}>
         <div className="ai-funding-matrix__head" aria-hidden="true">
           <span />
           <span>{t.now}</span>
@@ -121,8 +114,8 @@ export function AiFundingDashboardView({ dashboard, locale }: AiFundingDashboard
           <span>{t.threeMonths}</span>
         </div>
         {dashboard.metrics.map((metric) => (
-          <div className="ai-funding-matrix__row" data-trend={metric.trend} key={metric.label}>
-            <strong>{metric.label}</strong>
+          <div className="ai-funding-matrix__row" data-trend={metric.trend} key={metric.id ?? metric.label}>
+            <strong>{aiFundingMetricLabel(metric, locale)}</strong>
             <span>{metric.current}</span>
             <span>{metric.oneMonthAgo}</span>
             <span>{metric.threeMonthsAgo}</span>
@@ -134,10 +127,10 @@ export function AiFundingDashboardView({ dashboard, locale }: AiFundingDashboard
         <h2 id="ai-funding-components-title">{t.dataQuality}</h2>
         <ul>
           {dashboard.score.components.map((component) => (
-            <li key={component.label}>
-              <strong>{component.label}</strong>
+            <li key={component.id ?? component.label}>
+              <strong>{aiFundingComponentLabel(component, locale)}</strong>
               <span>{component.score === null ? "N/A" : `${component.score} / 3`}</span>
-              <p>{component.unavailableReason ?? component.metric}</p>
+              <p>{aiFundingUnavailableReason(component.unavailableReason, locale) ?? component.metric}</p>
             </li>
           ))}
         </ul>
@@ -175,7 +168,7 @@ export function AiFundingDashboardView({ dashboard, locale }: AiFundingDashboard
                 </div>
                 <div>
                   <dt>{t.fcf}</dt>
-                  <dd>{issuer.fcfTrend}</dd>
+                  <dd>{aiFundingFcfTrendLabel(issuer.fcfTrend, locale)}</dd>
                 </div>
               </dl>
               <p>{`${copy[locale].events}: ${issuer.nextEarningsDate}`}</p>
@@ -208,8 +201,12 @@ export function AiFundingDashboardView({ dashboard, locale }: AiFundingDashboard
         <ul>
           {dashboard.dataSources.map((source, index) => (
             <li key={`${source.source}:${index}`}>
-              {source.sourceUrl ? <a href={source.sourceUrl}>{source.source}</a> : <span>{source.source}</span>}
-              <small>{`${source.sourceType} / ${source.completeness} / ${source.confidence}`}</small>
+              {source.sourceUrl ? (
+                <a href={source.sourceUrl}>{aiFundingSourceTitle(source, locale)}</a>
+              ) : (
+                <span>{aiFundingSourceTitle(source, locale)}</span>
+              )}
+              <small>{`${aiFundingSourceTypeLabel(source.sourceType, locale)} / ${aiFundingCompletenessLabel(source.completeness, locale)} / ${aiFundingConfidenceLabel(source.confidence, locale)}`}</small>
             </li>
           ))}
         </ul>

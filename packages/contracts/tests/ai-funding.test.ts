@@ -37,6 +37,7 @@ describe("AiFundingDashboardSchema", () => {
       metrics: [
         {
           current: "62 bp",
+          id: "credit_spread",
           label: "Credit spread",
           oneMonthAgo: "51 bp",
           source,
@@ -50,6 +51,7 @@ describe("AiFundingDashboardSchema", () => {
         availableMaxScore: 0,
         components: [
           {
+            id: "orderbook_coverage",
             label: "Orderbook coverage",
             metric: "N/A",
             score: null,

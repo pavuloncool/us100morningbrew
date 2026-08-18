@@ -251,7 +251,7 @@ export const uiCopy = {
     archiveFilterDaily: "Daily",
     archiveFilterWeekly: "Weekly",
     archiveTitle: "Wszystkie briefingi US100 Morning Brew",
-    aiFunding: "AI funding",
+    aiFunding: "Finansowanie AI",
     dailyReport: "Daily",
     latest: "Najnowszy",
     mainNavigation: "Główne",

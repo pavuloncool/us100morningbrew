@@ -3,6 +3,7 @@ import type {
   AiFundingBond,
   AiFundingBondObservation,
   AiFundingDashboard,
+  AiFundingDashboardMetricId,
   AiFundingDebtIssue,
   AiFundingEvent,
   AiFundingIssuer,
@@ -10,6 +11,7 @@ import type {
   AiFundingQuarterlyMetric,
   AiFundingSpreadSnapshot,
   AiFundingStressComponent,
+  AiFundingStressComponentId,
   AiFundingStressScore,
   AiFundingStressState,
   AiFundingTenorBucket,
@@ -396,13 +398,14 @@ function latestQuarter(metrics: AiFundingQuarterlyMetric[]): AiFundingQuarterlyM
 }
 
 function scoreComponent(
+  id: AiFundingStressComponentId,
   label: string,
   metric: string,
   score: number | null,
   source: AiFundingMetricSource,
   unavailableReason: string | null
 ): AiFundingStressComponent {
-  return { label, metric, score, source, unavailableReason };
+  return { id, label, metric, score, source, unavailableReason };
 }
 
 function buildScore(input: {
@@ -422,6 +425,7 @@ function buildScore(input: {
   const latestFinancialMetric = latestQuarter(input.quarterlyMetrics);
   const components = [
     scoreComponent(
+      "credit_spread_trend",
       "Credit spread trend",
       medianSpreadChange === null ? "N/A" : bpLabel(medianSpreadChange),
       scoreCreditSpreadTrend(medianSpreadChange, input.thresholds),
@@ -430,6 +434,7 @@ function buildScore(input: {
       medianSpreadChange === null ? "No public 20D spread history is available yet." : null
     ),
     scoreComponent(
+      "orderbook_coverage",
       "Orderbook coverage",
       multipleLabel(coverage),
       scoreOrderbookCoverage(coverage, input.thresholds),
@@ -440,6 +445,7 @@ function buildScore(input: {
         : null
     ),
     scoreComponent(
+      "new_issue_concession",
       "New issue concession",
       bpLevelLabel(concession),
       scoreNewIssueConcession(concession, input.thresholds),
@@ -450,6 +456,7 @@ function buildScore(input: {
         : null
     ),
     scoreComponent(
+      "capex_cashflow_pressure",
       "Capex / cash-flow pressure",
       latestFinancialMetric?.capexToOperatingCashFlow === null ||
         latestFinancialMetric?.capexToOperatingCashFlow === undefined
@@ -521,6 +528,11 @@ export function buildAiFundingDashboard(input: AiFundingDashboardInput): AiFundi
     unavailablePublicSource("New issue concession", input.asOf);
   const capexSource = financialMetric?.source ?? unavailablePublicSource("Capex", input.asOf);
 
+  const metric = (id: AiFundingDashboardMetricId, value: Omit<AiFundingDashboard["metrics"][number], "id">) => ({
+    ...value,
+    id
+  });
+
   return AiFundingDashboardSchema.parse({
     alerts: input.alerts ?? [],
     asOf: input.asOf,
@@ -565,7 +577,7 @@ export function buildAiFundingDashboard(input: AiFundingDashboardInput): AiFundi
       };
     }),
     metrics: [
-      {
+      metric("credit_spread", {
         current: bpLevelLabel(currentMedianSpread),
         label: "Credit spread",
         oneMonthAgo:
@@ -582,24 +594,24 @@ export function buildAiFundingDashboard(input: AiFundingDashboardInput): AiFundi
               : medianSpreadChange < 0
                 ? "down"
                 : "flat"
-      },
-      {
+      }),
+      metric("orderbook_coverage", {
         current: multipleLabel(coverage),
         label: "Orderbook coverage",
         oneMonthAgo: "N/A",
         source: coverageSource,
         threeMonthsAgo: "N/A",
         trend: "na"
-      },
-      {
+      }),
+      metric("new_issue_concession", {
         current: bpLevelLabel(concession),
         label: "New issue concession",
         oneMonthAgo: "N/A",
         source: concessionSource,
         threeMonthsAgo: "N/A",
         trend: "na"
-      },
-      {
+      }),
+      metric("hyperscaler_capex", {
         current: pctLabel(financialMetric?.yoyCapexGrowth ?? null),
         label: "Hyperscaler capex",
         oneMonthAgo: "N/A",
@@ -611,8 +623,8 @@ export function buildAiFundingDashboard(input: AiFundingDashboardInput): AiFundi
             : financialMetric.yoyCapexGrowth > 0
               ? "up"
               : "down"
-      },
-      {
+      }),
+      metric("free_cash_flow", {
         current:
           financialMetric?.freeCashFlow === null || financialMetric?.freeCashFlow === undefined
             ? "N/A"
@@ -622,7 +634,7 @@ export function buildAiFundingDashboard(input: AiFundingDashboardInput): AiFundi
         source: capexSource,
         threeMonthsAgo: "N/A",
         trend: cashTrendLabel(financialMetric?.freeCashFlow ?? null) === "N/A" ? "na" : "flat"
-      }
+      })
     ],
     schemaVersion: "0.1.0",
     score

@@ -160,8 +160,24 @@ export const AiFundingEventSchema = z
   })
   .strict();
 
+export const AiFundingStressStateSchema = z.enum([
+  "insufficient_data",
+  "low",
+  "moderate",
+  "high",
+  "severe"
+]);
+
+export const AiFundingStressComponentIdSchema = z.enum([
+  "credit_spread_trend",
+  "orderbook_coverage",
+  "new_issue_concession",
+  "capex_cashflow_pressure"
+]);
+
 export const AiFundingStressComponentSchema = z
   .object({
+    id: AiFundingStressComponentIdSchema.optional(),
     label: z.string().trim().min(1),
     metric: z.string().trim().min(1),
     score: z.number().int().min(0).max(3).nullable(),
@@ -170,12 +186,12 @@ export const AiFundingStressComponentSchema = z
   })
   .strict();
 
-export const AiFundingStressStateSchema = z.enum([
-  "insufficient_data",
-  "low",
-  "moderate",
-  "high",
-  "severe"
+export const AiFundingDashboardMetricIdSchema = z.enum([
+  "credit_spread",
+  "orderbook_coverage",
+  "new_issue_concession",
+  "hyperscaler_capex",
+  "free_cash_flow"
 ]);
 
 export const AiFundingStressScoreSchema = z
@@ -202,6 +218,7 @@ export const AiFundingAlertSchema = z
 export const AiFundingDashboardMetricSchema = z
   .object({
     current: z.string().trim().min(1),
+    id: AiFundingDashboardMetricIdSchema.optional(),
     label: z.string().trim().min(1),
     oneMonthAgo: z.string().trim().min(1),
     source: AiFundingMetricSourceSchema,
@@ -244,6 +261,7 @@ export type AiFundingBond = z.infer<typeof AiFundingBondSchema>;
 export type AiFundingBondObservation = z.infer<typeof AiFundingBondObservationSchema>;
 export type AiFundingDashboard = z.infer<typeof AiFundingDashboardSchema>;
 export type AiFundingDebtIssue = z.infer<typeof AiFundingDebtIssueSchema>;
+export type AiFundingDashboardMetricId = z.infer<typeof AiFundingDashboardMetricIdSchema>;
 export type AiFundingEvent = z.infer<typeof AiFundingEventSchema>;
 export type AiFundingIssuer = z.infer<typeof AiFundingIssuerSchema>;
 export type AiFundingIssuerId = z.infer<typeof AiFundingIssuerIdSchema>;
@@ -251,6 +269,7 @@ export type AiFundingMetricSource = z.infer<typeof AiFundingMetricSourceSchema>;
 export type AiFundingQuarterlyMetric = z.infer<typeof AiFundingQuarterlyMetricSchema>;
 export type AiFundingSpreadSnapshot = z.infer<typeof AiFundingSpreadSnapshotSchema>;
 export type AiFundingStressComponent = z.infer<typeof AiFundingStressComponentSchema>;
+export type AiFundingStressComponentId = z.infer<typeof AiFundingStressComponentIdSchema>;
 export type AiFundingStressScore = z.infer<typeof AiFundingStressScoreSchema>;
 export type AiFundingStressState = z.infer<typeof AiFundingStressStateSchema>;
 export type AiFundingTenorBucket = z.infer<typeof AiFundingTenorBucketSchema>;

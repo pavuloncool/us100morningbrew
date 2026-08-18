@@ -9,6 +9,9 @@ import {
   type AiFundingRepository
 } from "@us100/storage";
 
+import { localizeAiFundingDashboard } from "./ai-funding-i18n";
+import type { AppLocale } from "./briefings";
+
 function publicFixtureSource(
   asOf: string,
   source: string,
@@ -27,7 +30,10 @@ function publicFixtureSource(
   };
 }
 
-export function createPublicOnlyAiFundingFallback(now = new Date()): AiFundingDashboard {
+export function createPublicOnlyAiFundingFallback(
+  now = new Date(),
+  locale: AppLocale = "en"
+): AiFundingDashboard {
   const asOf = now.toISOString();
   const finraSource = publicFixtureSource(
     asOf,
@@ -44,7 +50,7 @@ export function createPublicOnlyAiFundingFallback(now = new Date()): AiFundingDa
     "unavailable"
   );
 
-  return buildAiFundingDashboard({
+  const dashboard = buildAiFundingDashboard({
     asOf,
     bondObservations: defaultAiFundingBonds.map((bond) => ({
       bondId: bond.id,
@@ -79,6 +85,7 @@ export function createPublicOnlyAiFundingFallback(now = new Date()): AiFundingDa
     quarterlyMetrics: [],
     treasuryYields: []
   });
+  return localizeAiFundingDashboard(dashboard, locale);
 }
 
 const fallbackRepository: AiFundingRepository = {
@@ -96,11 +103,14 @@ export function getAiFundingRepository(): AiFundingRepository {
   return aiFundingRepository;
 }
 
-export async function getLatestAiFundingDashboard(): Promise<AiFundingDashboard> {
+export async function getLatestAiFundingDashboard(locale: AppLocale = "en"): Promise<AiFundingDashboard> {
   try {
-    return (await aiFundingRepository.getLatestDashboard()) ?? createPublicOnlyAiFundingFallback();
+    return localizeAiFundingDashboard(
+      (await aiFundingRepository.getLatestDashboard()) ?? createPublicOnlyAiFundingFallback(),
+      locale
+    );
   } catch (error) {
     console.warn("[ai-funding] Falling back to public-only placeholder dashboard", error);
-    return createPublicOnlyAiFundingFallback();
+    return createPublicOnlyAiFundingFallback(new Date(), locale);
   }
 }

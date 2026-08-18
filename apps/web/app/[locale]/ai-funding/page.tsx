@@ -18,6 +18,6 @@ export default async function AiFundingPage({ params }: AiFundingPageProps) {
     notFound();
   }
 
-  const dashboard = await getLatestAiFundingDashboard();
+  const dashboard = await getLatestAiFundingDashboard(locale);
   return <AiFundingDashboardView dashboard={dashboard} locale={locale} />;
 }
