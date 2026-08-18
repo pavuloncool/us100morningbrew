@@ -100,7 +100,7 @@ export async function getLatestAiFundingDashboard(): Promise<AiFundingDashboard>
   try {
     return (await aiFundingRepository.getLatestDashboard()) ?? createPublicOnlyAiFundingFallback();
   } catch (error) {
-    console.error("[ai-funding] Falling back to public-only placeholder dashboard", error);
+    console.warn("[ai-funding] Falling back to public-only placeholder dashboard", error);
     return createPublicOnlyAiFundingFallback();
   }
 }
