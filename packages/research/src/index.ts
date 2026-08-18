@@ -364,5 +364,6 @@ export function getBriefingBySlug(slug: string, locale: Locale | string = "pl"):
 
 export * from "./fixture-pipeline";
 export * from "./budget-pipeline";
+export * from "./ai-funding";
 export * from "./generation";
 export * from "./pipeline";

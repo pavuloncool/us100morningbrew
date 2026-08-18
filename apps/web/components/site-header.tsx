@@ -35,6 +35,7 @@ export function SiteHeader() {
         <Link href={`/${locale}`}>{copy.latest}</Link>
         <Link href={`/${locale}/archive`}>{copy.archive}</Link>
         <Link href={`/${locale}/weekly`}>{copy.reportOfWeek}</Link>
+        <Link href={`/${locale}/ai-funding`}>{copy.aiFunding}</Link>
       </nav>
       <LanguageSwitch />
     </header>

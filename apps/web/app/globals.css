@@ -300,6 +300,242 @@ select {
   color: var(--muted);
 }
 
+.ai-funding-page {
+  max-width: 1240px;
+}
+
+.ai-funding-hero {
+  align-items: start;
+  border-bottom: 1px solid var(--border);
+  display: grid;
+  gap: var(--space-6);
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 320px);
+  padding-bottom: var(--space-8);
+}
+
+.ai-funding-hero > div:first-child {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.ai-funding-hero h1 {
+  font-size: var(--text-page-title-size);
+  line-height: 1.06;
+}
+
+.ai-funding-score,
+.ai-funding-interpretation,
+.ai-funding-matrix,
+.ai-funding-components,
+.ai-funding-issuers,
+.ai-funding-events,
+.ai-funding-sources {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.ai-funding-score {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-5);
+}
+
+.ai-funding-score span,
+.ai-funding-score small {
+  color: var(--muted);
+  font-size: var(--text-label-size);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.ai-funding-score strong {
+  font-size: 40px;
+  line-height: 1;
+}
+
+.ai-funding-score b {
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  font-size: var(--text-label-size);
+  padding: var(--space-1) var(--space-2);
+  width: fit-content;
+}
+
+.ai-funding-score[data-state="insufficient_data"] b,
+.ai-funding-score[data-state="moderate"] b {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.ai-funding-score[data-state="low"] b {
+  background: var(--positive-soft);
+  color: var(--positive);
+}
+
+.ai-funding-score[data-state="high"] b,
+.ai-funding-score[data-state="severe"] b {
+  background: var(--negative-soft);
+  color: var(--negative);
+}
+
+.ai-funding-interpretation {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-5);
+}
+
+.ai-funding-interpretation p {
+  font-size: 18px;
+  line-height: 1.45;
+}
+
+.ai-funding-interpretation span {
+  color: var(--muted);
+  font-size: var(--text-small-size);
+}
+
+.ai-funding-matrix {
+  display: grid;
+  overflow: hidden;
+}
+
+.ai-funding-matrix__head,
+.ai-funding-matrix__row {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: minmax(160px, 1fr) repeat(3, minmax(74px, 0.35fr));
+  min-height: 48px;
+  padding: 0 var(--space-5);
+}
+
+.ai-funding-matrix__head {
+  align-items: center;
+  background: var(--background);
+  color: var(--muted);
+  font-size: var(--text-label-size);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.ai-funding-matrix__row {
+  align-items: center;
+  border-top: 1px solid var(--border);
+}
+
+.ai-funding-matrix__row span {
+  font-weight: 700;
+}
+
+.ai-funding-matrix__row[data-trend="up"] span:nth-child(2) {
+  color: var(--negative);
+}
+
+.ai-funding-matrix__row[data-trend="down"] span:nth-child(2) {
+  color: var(--positive);
+}
+
+.ai-funding-components,
+.ai-funding-issuers,
+.ai-funding-events,
+.ai-funding-sources {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-6);
+}
+
+.ai-funding-components h2,
+.ai-funding-issuers h2,
+.ai-funding-events h2,
+.ai-funding-sources h2 {
+  font-size: var(--text-section-title-size);
+  line-height: var(--text-section-title-line-height);
+}
+
+.ai-funding-components ul,
+.ai-funding-events ol,
+.ai-funding-sources ul {
+  display: grid;
+  gap: var(--space-3);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ai-funding-components li,
+.ai-funding-events li,
+.ai-funding-sources li {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4);
+}
+
+.ai-funding-components li {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.ai-funding-components p {
+  color: var(--muted);
+  grid-column: 1 / -1;
+}
+
+.ai-funding-issuer-grid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.ai-funding-issuer-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-4);
+}
+
+.ai-funding-issuer-card header {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.ai-funding-issuer-card header strong {
+  font-size: 22px;
+}
+
+.ai-funding-issuer-card header span,
+.ai-funding-issuer-card p,
+.ai-funding-events p,
+.ai-funding-sources small {
+  color: var(--muted);
+}
+
+.ai-funding-issuer-card dl {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.ai-funding-issuer-card dl div {
+  align-items: baseline;
+  display: flex;
+  gap: var(--space-3);
+  justify-content: space-between;
+}
+
+.ai-funding-issuer-card dt {
+  color: var(--muted);
+  font-size: var(--text-label-size);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.ai-funding-issuer-card dd {
+  font-weight: 800;
+  margin: 0;
+}
+
 .why {
   border-top: 1px solid var(--border);
   display: grid;
@@ -915,6 +1151,7 @@ select {
   }
 
   .briefing-hero,
+  .ai-funding-hero,
   .section-grid,
   .review-bar,
   .signal-dashboard__body,
@@ -949,6 +1186,28 @@ select {
 
   .hero-copy h1 {
     font-size: 32px;
+  }
+
+  .ai-funding-hero h1 {
+    font-size: 34px;
+  }
+
+  .ai-funding-matrix {
+    overflow-x: auto;
+  }
+
+  .ai-funding-matrix__head,
+  .ai-funding-matrix__row {
+    grid-template-columns: minmax(150px, 1fr) repeat(3, minmax(80px, 0.4fr));
+    min-width: 520px;
+  }
+
+  .ai-funding-issuer-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-funding-components li {
+    grid-template-columns: 1fr;
   }
 
   .factor-bars__copy {

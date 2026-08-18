@@ -16,6 +16,14 @@
     {
       "path": "/api/cron/weekly-summary",
       "schedule": "0 8 * * 6"
+    },
+    {
+      "path": "/api/cron/ai-funding",
+      "schedule": "15 11 * * 1-5"
+    },
+    {
+      "path": "/api/cron/ai-funding",
+      "schedule": "15 12 * * 1-5"
     }
   ]
 }
